@@ -1,0 +1,6 @@
+[submodule "obliv-c"]
+	path = obliv-c
+	url = https://github.com/samee/obliv-c
+[submodule "labhe"]
+	path = labhe
+	url = https://github.com/haslab/labhe.git
