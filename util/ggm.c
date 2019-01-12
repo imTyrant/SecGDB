@@ -1,6 +1,3 @@
-/**
- *  Carl Dean
- */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,7 +36,7 @@ void GFunction(GGM *ggm, char *in, char *out_left, char *out_right)
         strcat(out_left, "0");
         strcat(out_right, "1");
     }
-#else
+#elif defined SECURITY_LEVEL_128
     EVP_CIPHER_CTX *ctx;
     int len_l;
     int len_r;
@@ -52,7 +49,7 @@ void GFunction(GGM *ggm, char *in, char *out_left, char *out_right)
         log_error();
     }
 
-    if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, in, in))
+    if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, (unsigned char*)in, (unsigned char*)in))
     {
         log_error();
     }
@@ -81,6 +78,47 @@ void GFunction(GGM *ggm, char *in, char *out_left, char *out_right)
 
     EVP_CIPHER_CTX_free(ctx);
 
+#else
+    EVP_CIPHER_CTX *ctx;
+    int len_l;
+    int len_r;
+
+    int clen_l;
+    int clen_r;
+
+    if (!(ctx = EVP_CIPHER_CTX_new()))
+    {
+        log_error();
+    }
+
+    if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, (unsigned char*)in, (unsigned char*)in))
+    {
+        log_error();
+    }
+
+    if (1 != EVP_EncryptUpdate(ctx, (unsigned char *)out_left, &len_l, (unsigned char *)"0", 1))
+    {
+        log_error();
+    }
+    clen_l = len_l;
+    if (1 != EVP_EncryptFinal_ex(ctx, (unsigned char *)out_left, &len_l))
+    {
+        log_error();
+    }
+    clen_l += len_l;
+
+    if (1 != EVP_EncryptUpdate(ctx, (unsigned char *)out_right, &len_r, (unsigned char *)"1", 1))
+    {
+        log_error();
+    }
+    clen_r = len_r;
+    if (1 != EVP_EncryptFinal_ex(ctx, (unsigned char *)out_right, &len_r))
+    {
+        log_error();
+    }
+    clen_r += len_r;
+
+    EVP_CIPHER_CTX_free(ctx);
 #endif
 }
 

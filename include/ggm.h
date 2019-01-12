@@ -1,8 +1,10 @@
-/**
- *  Carl Dean
- */
 #ifndef SEC_GDB_H_GGM
 #define SEC_GDB_H_GGM
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 #include "global.h"
 
@@ -10,10 +12,10 @@
 
 typedef struct _GGM
 {
-    int level;
+    // int level;
     int key_size;
     int n;
-    char* key;
+    // char* key;
 } GGM;
 
 typedef struct _CONSTRAIN
@@ -37,5 +39,7 @@ void ggm_derive(GGM *ggm, Constrain *constrain, Subkeys *subkeys);
 
 void ggm_free_keys(Subkeys *subkeys);
 
-
+#ifdef __cplusplus
+}
+#endif
 #endif
