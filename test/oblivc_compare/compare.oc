@@ -1,0 +1,28 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <obliv.oh>
+
+#include "data_struct.h"
+
+void compare(void* args)
+{
+    INPUT *input = (INPUT*) args;
+
+    obliv long long a1, a2, r1, r2;
+
+    a1 = feedOblivLLong(input->a_1, 1);
+    a2 = feedOblivLLong(input->a_2, 1);
+    r1 = feedOblivLLong(input->r_1, 2);
+    r2 = feedOblivLLong(input->r_2, 2);
+
+    obliv long long left = a1 - r1;
+    obliv long long right = a2 - r2;
+
+    obliv int rtn;
+
+    obliv if (left > right) { rtn = 1; }
+    else obliv if (left == right) { rtn = 2; }
+    else { rtn = 3; }
+
+    revealOblivInt(&input->result, rtn, 0);
+}
