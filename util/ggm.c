@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 
+#include <openssl/sha.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
 
@@ -44,6 +45,12 @@ void GFunction(GGM *ggm, char *in, char *out_left, char *out_right)
     int clen_l;
     int clen_r;
 
+    unsigned char left_data[KEY_SIZE];
+    unsigned char right_data[KEY_SIZE];
+
+    SHA1("0", 2, left_data);
+    SHA1("1", 2, right_data);
+
     if (!(ctx = EVP_CIPHER_CTX_new()))
     {
         log_error();
@@ -54,7 +61,7 @@ void GFunction(GGM *ggm, char *in, char *out_left, char *out_right)
         log_error();
     }
 
-    if (1 != EVP_EncryptUpdate(ctx, (unsigned char *)out_left, &len_l, (unsigned char *)"0", 1))
+    if (1 != EVP_EncryptUpdate(ctx, (unsigned char *)out_left, &len_l, left_data, KEY_SIZE))
     {
         log_error();
     }
@@ -65,7 +72,7 @@ void GFunction(GGM *ggm, char *in, char *out_left, char *out_right)
     }
     clen_l += len_l;
 
-    if (1 != EVP_EncryptUpdate(ctx, (unsigned char *)out_right, &len_r, (unsigned char *)"1", 1))
+    if (1 != EVP_EncryptUpdate(ctx, (unsigned char *)out_right, &len_r, right_data, KEY_SIZE))
     {
         log_error();
     }
@@ -85,6 +92,12 @@ void GFunction(GGM *ggm, char *in, char *out_left, char *out_right)
 
     int clen_l;
     int clen_r;
+    
+    unsigned char left_data[KEY_SIZE];
+    unsigned char right_data[KEY_SIZE];
+
+    SHA256("0", 2, left_data);
+    SHA256("1", 2, right_data);
 
     if (!(ctx = EVP_CIPHER_CTX_new()))
     {
@@ -96,7 +109,7 @@ void GFunction(GGM *ggm, char *in, char *out_left, char *out_right)
         log_error();
     }
 
-    if (1 != EVP_EncryptUpdate(ctx, (unsigned char *)out_left, &len_l, (unsigned char *)"0", 1))
+    if (1 != EVP_EncryptUpdate(ctx, (unsigned char *)out_left, &len_l, left_data, KEY_SIZE))
     {
         log_error();
     }
@@ -107,7 +120,7 @@ void GFunction(GGM *ggm, char *in, char *out_left, char *out_right)
     }
     clen_l += len_l;
 
-    if (1 != EVP_EncryptUpdate(ctx, (unsigned char *)out_right, &len_r, (unsigned char *)"1", 1))
+    if (1 != EVP_EncryptUpdate(ctx, (unsigned char *)out_right, &len_r, right_data, KEY_SIZE))
     {
         log_error();
     }
