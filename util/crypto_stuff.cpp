@@ -22,12 +22,49 @@ extern "C"
 using namespace std;
 
 /**
+ * Wrap the export function of GMP mpz_t
+ * Take a big enough buffer and mpz_class
+ * Output the total byte got.
+*/
+size_t get_mpz_raw(void* buff, mpz_ptr src)
+{
+    size_t byte_get = 0;
+    mpz_export(buff, &byte_get, WRAPPING_GMP_EXPORT_FORMAT_ORDER, WRAPPING_GMP_EXPORT_FORMAT_SIZE,
+                WRAPPING_GMP_EXPORT_FORMAT_ENDIAN, WRAPPING_GMP_EXPORT_FORMAT_NAIL, src);
+    return byte_get;
+}
+/**
+ * Wrap the export function of GMP mpz_t
+ * Take a big enough buffer and mpz_class
+ * Output the total byte got.
+*/
+string let_mpz_raw_to_str(mpz_ptr src)
+{
+    
+    size_t byte_get = 0;
+    char* bytes = (char*)mpz_export(NULL, &byte_get, WRAPPING_GMP_EXPORT_FORMAT_ORDER, WRAPPING_GMP_EXPORT_FORMAT_SIZE,
+                WRAPPING_GMP_EXPORT_FORMAT_ENDIAN, WRAPPING_GMP_EXPORT_FORMAT_NAIL, src);
+    string rtn = string(bytes, byte_get);
+    free(bytes);
+    return rtn;
+}
+/**
+ * Wrap the export function of GMP mpz_t
+ * Take a big enough buffer and mpz_class
+ * Output the total byte got.
+*/
+void set_mpz_raw(mpz_ptr dest, size_t size, const void* buff)
+{
+    mpz_import(dest, size, WRAPPING_GMP_EXPORT_FORMAT_ORDER, WRAPPING_GMP_EXPORT_FORMAT_SIZE,
+                WRAPPING_GMP_EXPORT_FORMAT_ENDIAN, WRAPPING_GMP_EXPORT_FORMAT_NAIL, buff);
+}
+
+/**
  * Hash function which is used in paper.
 */
 void H_1(unsigned char *key, size_t key_size, unsigned char *in, size_t data_size, unsigned char *out)
 {
     int rtn_size;
-
 #ifdef SECURITY_LEVEL_128
     HMAC(EVP_sha1(), key, (int)key_size, in, data_size, out, (unsigned int *)&rtn_size);
 #else
@@ -41,7 +78,7 @@ void H_1(unsigned char *key, size_t key_size, unsigned char *in, size_t data_siz
 */
 void H_2(unsigned char *key, size_t key_size, unsigned char *in, size_t data_size, unsigned char *out)
 {
-    string str = string((char *)key);
+    string str = string((char *)key, key_size);
     std::reverse(str.begin(), str.end());
 #ifdef NOT_SAME_HASH
     //Nee a alternative hash algorithm.
@@ -72,7 +109,7 @@ size_t F(unsigned char *key, size_t key_size, unsigned char *in, size_t data_siz
 */
 bool sample_key(SK &sk, PK &pk)
 {
-    unsigned char rand_buff[KEY_SIZE];
+    unsigned char rand_buff[KEY_SIZE] = {0};
     mpz_class k1, k2, k3;
 
     mpz_class seed;
@@ -81,7 +118,7 @@ bool sample_key(SK &sk, PK &pk)
 
     if (!in_file.fail())
     {
-        in_file.getline((char *)rand_buff, KEY_SIZE);
+        // in_file.getline((char *)rand_buff, KEY_SIZE);
         in_file.close();
     }
     else
@@ -106,21 +143,25 @@ bool sample_key(SK &sk, PK &pk)
         return false;
     }
 
-    char buff[SECURITY_LEVEL];
+    // char buff[SECURITY_LEVEL];
+    // size_t byte_got = 0;
 
     mpz_urandomb(k1.get_mpz_t(), rand_st, SECURITY_LEVEL);
-    mpz_get_str(buff, 16, k1.get_mpz_t());
-    sk.k_1 = vector<unsigned char>(begin(buff), end(buff));
-    memset(buff, 0, sizeof(buff));
+    // byte_got = get_mpz_raw(buff, k1.get_mpz_t());
+    // sk.k_1 = string(buff, byte_got);
+    // memset(buff, 0, sizeof(buff));
+    sk.k_1 = let_mpz_raw_to_str(k1.get_mpz_t());
 
     mpz_urandomb(k2.get_mpz_t(), rand_st, SECURITY_LEVEL);
-    mpz_get_str(buff, 16, k2.get_mpz_t());
-    sk.k_2 = vector<unsigned char>(begin(buff), end(buff));
-    memset(buff, 0, sizeof(buff));
+    // byte_got = get_mpz_raw(buff, k2.get_mpz_t());
+    // sk.k_2 = string(buff, byte_got);
+    // memset(buff, 0, sizeof(buff));
+    sk.k_2 = let_mpz_raw_to_str(k1.get_mpz_t());
 
     mpz_urandomb(k3.get_mpz_t(), rand_st, SECURITY_LEVEL);
-    mpz_get_str(buff, 16, k3.get_mpz_t());
-    sk.k_3 = vector<unsigned char>(begin(buff), end(buff));
+    // byte_got = get_mpz_raw(buff, k3.get_mpz_t());
+    // sk.k_3 = string(buff, byte_got);
+    sk.k_3 = let_mpz_raw_to_str(k1.get_mpz_t());
 
     gmp_randclear(rand_st);
 
@@ -189,13 +230,13 @@ int main(int argc, char **argv)
     sample_key(sk, pk);
     // fprintf(stdout, "\nsk.k_1: ");
     // // mpz_out_str(stdout, 10, sk.k_1);
-    // cout << sk.k_1;
+    cout << sk.k_1.size();
     // fprintf(stdout, "\nsk.k_2: ");
     // // mpz_out_str(stdout, 10, sk.k_2);
-    // cout << sk.k_2;
+    cout << sk.k_2.size();
     // fprintf(stdout, "\nsk.k_3: ");
     // // mpz_out_str(stdout, 10, sk.k_3);
-    // cout << sk.k_3; cout << "\n" << sk.k_3.length();
+    cout << sk.k_3.size();
 
     fprintf(stdout, "\nsk.jl_sk.p: ");
     cout << sk.jl_sk.p.get_str();
