@@ -35,6 +35,9 @@ void remote_simulator(mpz_class left, mpz_class right)
     io.a_1 = unblined_left.get_si();
     io.a_2 = unblined_right.get_si();
 
+    // cout << "ubld_l: " << io.a_1;
+    // cout << " \tubld_r: " << io.a_2;
+
     if (0 != protocolAcceptTcp2P(&pd, port.c_str()))
     {
         cout << "Obliv-c listening failed\n";
@@ -89,6 +92,11 @@ void gen_random(mpz_class &r_left, mpz_class &r_right)
 // -1 : the left is less than the right.
 int secure_compare(PK& pk, mpz_class &left, mpz_class &right)
 {
+#ifdef SEC_GDB_WITHOUT_ENCRYPTION
+    if (left > right) { return 1; }
+    else if (left == right) {return 0; }
+    else { return -1; }
+#else
     mpz_class r_left;
     mpz_class r_right;
     mpz_class r_left_enc;
@@ -98,7 +106,7 @@ int secure_compare(PK& pk, mpz_class &left, mpz_class &right)
 
     JL_encryption(pk, r_left, r_left_enc);
     JL_encryption(pk, r_right, r_right_enc);
-
+    
     mpz_class blinded_left = JL_homo_add(pk, left, r_left_enc);
     mpz_class blinded_right = JL_homo_add(pk, right, r_right_enc);
 
@@ -133,9 +141,10 @@ int secure_compare(PK& pk, mpz_class &left, mpz_class &right)
     {
         if (--retry_time == 0) 
         {
-            cout << "Obliv-c connection failed\n";
+            cout << "Obliv-c connection failed, retry time left: " << retry_time << "\n";
             abort();
         }
+        usleep(TIME_INTERVAL);
         // abort();
     }
 
@@ -146,4 +155,20 @@ int secure_compare(PK& pk, mpz_class &left, mpz_class &right)
     remote.join();
     g_compare_counter ++;
     return io.result;
+#endif
+}
+
+bool secure_compare_greater(PK& pk, mpz_class &left, mpz_class &right)
+{
+    return secure_compare(pk, left, right) == 1;
+}
+
+bool secure_compare_less(PK& pk, mpz_class &left, mpz_class &right)
+{
+    return secure_compare(pk, left, right) == -1;
+}
+
+bool secure_compare_equal(PK& pk, mpz_class &left, mpz_class &right)
+{
+    return secure_compare(pk, left, right) == 0;
 }
