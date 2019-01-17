@@ -14,6 +14,7 @@
 typedef struct _JL_SK
 {
     mpz_class p;
+    mpz_class pm12k;
 } JL_SK;
 
 typedef struct _JL_PK
@@ -21,6 +22,8 @@ typedef struct _JL_PK
     mpz_class N;
     mpz_class y;
     mpz_class k;
+    mpz_class _2k1;
+    mpz_class _2k;
 } JL_PK;
 
 typedef struct _SK
@@ -70,7 +73,17 @@ void sk_clear(SK &sk);
 
 void pk_clear(PK &pk);
 
-void JL_encryption(SK &sk, PK &pk, size_t &num, mpz_class &out);
+void JL_encryption(PK &pk, size_t num, mpz_class &out);
+
+void JL_encryption(PK &pk, mpz_class &in, mpz_class &out);
+
+void JL_decryption(SK &sk, PK &pk, mpz_class &in, size_t* out);
+
+void JL_decryption(SK &sk, PK &pk, mpz_class &in, mpz_class &out);
+
+mpz_class JL_homo_add(PK &pk, mpz_class &left, mpz_class &right);
+
+mpz_class JL_homo_sub(PK &pk, mpz_class &left, mpz_class &right);
 
 void masking(const void* input, size_t size, unsigned char* mask, size_t mask_size, unsigned char* out);
 

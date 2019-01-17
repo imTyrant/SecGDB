@@ -149,6 +149,9 @@ bool sample_key(SK &sk, PK &pk)
         return false;
     }
 
+    bhjl_precom(pk.jl_pk._2k1.get_mpz_t(), pk.jl_pk._2k.get_mpz_t(), 
+            sk.jl_sk.pm12k.get_mpz_t(), sk.jl_sk.p.get_mpz_t(), SECURITY_LEVEL);
+
     mpz_urandomb(k1.get_mpz_t(), rand_st, SECURITY_LEVEL);
     sk.k_1 = let_mpz_raw_to_str(k1.get_mpz_t());
 
@@ -165,6 +168,8 @@ bool sample_key(SK &sk, PK &pk)
 
 /**
  * You know, cleaning up is a good habit.
+ * Added since I used mpz_t, however mpz_class won't need them.
+ * Thus ignore the following functions.
 */
 void sk_clear(SK &sk)
 {
@@ -178,14 +183,91 @@ void pk_clear(PK &pk)
 }
 
 /**
- * A wrapped JL scheme encryption alogrithm
+ * A wrapped JL scheme encryption alogrithm.
  * Yeah... the last one is the return value.. History....
 */
-void JL_encryption(SK &sk, PK &pk, size_t &num, mpz_class &out)
+void JL_encryption(PK &pk, mpz_class &in, mpz_class &out)
 {
-    mpz_set_ui(out.get_mpz_t(), num);
+#ifdef SEC_GDB_WITHOUT_ENCRYPTION
+    out = in;
+#else
+    mpz_class seed;
+    unsigned char rand_buff[KEY_SIZE] = {0};
+    ifstream in_file("/dev/urandom");
+
+    if (!in_file.fail())
+    {
+        in_file.getline((char *)rand_buff, KEY_SIZE);
+        in_file.close();
+    }
+    else
+    {
+        cout << "Fail to open random source\n";
+        for (int i = 0; i < KEY_SIZE; i++)
+        {
+            rand_buff[i] = '0' + (char)i;
+        }
+    }
+    mpz_import(seed.get_mpz_t(), sizeof(rand_buff), 1, sizeof(rand_buff[0]), 0, 0, rand_buff);
+
+    gmp_randstate_t rand_st;
+    gmp_randinit_default(rand_st);
+    gmp_randseed(rand_st, seed.get_mpz_t());
+
+    bhjl_encrypt(out.get_mpz_t(), in.get_mpz_t(), pk.jl_pk.N.get_mpz_t(),
+                pk.jl_pk.y.get_mpz_t(), SECURITY_LEVEL, pk.jl_pk._2k.get_mpz_t(), rand_st);
+    
+    gmp_randclear(rand_st);
+#endif
 }
 
+void JL_encryption(PK &pk, size_t num, mpz_class &out)
+{
+    mpz_class tmp(num);
+    JL_encryption(pk, tmp, out);
+}
+
+/**
+ * A wrapped JL scheme decryption alogrithm.
+*/
+void JL_decryption(SK &sk, PK &pk, mpz_class &in, mpz_class &out)
+{
+#ifdef SEC_GDB_WITHOUT_ENCRYPTION
+    out = in;
+#else
+    bhjl_decrypt(out.get_mpz_t(), in.get_mpz_t(), sk.jl_sk.p.get_mpz_t(),pk.jl_pk.k.get_mpz_t(),
+                    SECURITY_LEVEL, pk.jl_pk._2k1.get_mpz_t(), sk.jl_sk.pm12k.get_mpz_t());
+#endif
+}
+
+void JL_decryption(SK &sk, PK &pk, mpz_class &in, size_t* out)
+{
+    mpz_class tmp;
+    JL_decryption(sk, pk, in, tmp);
+    *out = tmp.get_ui();
+}
+
+mpz_class JL_homo_add(PK &pk, mpz_class &left, mpz_class &right)
+{
+    mpz_class rtn;
+#ifdef SEC_GDB_WITHOUT_ENCRYPTION
+    rtn = left + right;
+#else
+    bhjl_homadd(rtn.get_mpz_t(), left.get_mpz_t(), right.get_mpz_t(), pk.jl_pk.N.get_mpz_t());
+#endif
+    return rtn;
+}
+
+mpz_class JL_homo_sub(PK &pk, mpz_class &left, mpz_class &right)
+{
+    mpz_class rtn;
+#ifdef SEC_GDB_WITHOUT_ENCRYPTION
+    rtn = left - right;
+#else
+    bhjl_homsub(rtn.get_mpz_t(), left.get_mpz_t(), right.get_mpz_t(), pk.jl_pk.N.get_mpz_t());
+#endif
+    return rtn;
+}
 
 /**
  * 
