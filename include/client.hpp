@@ -5,6 +5,7 @@
 #include <gmpxx.h>
 #include <unordered_map>
 
+#include "global.h"
 #include "graph.hpp"
 #include "dictionary_items.hpp"
 #include "crypto_stuff.hpp"
@@ -38,6 +39,7 @@ class Client
 
     void keygen();
     void enc_graph(const std::string &file_path);
+    Request give_request(std::string src, std::string dest);
 
     void store_sk();
     void store_pk();
@@ -46,21 +48,19 @@ class Client
     void store_dcv();
     void store_de();
 
-    inline Graph& get_graph()
-    {
-        return this->graph;
-    }
+    inline Graph& get_graph() { return this->graph; }
 
-    inline SK& get_sk()
-    {
-        return this->sk;
-    }
+    inline SK& get_sk() { return this->sk; }
 
-    inline PK& get_pk()
-    {
-        return this->pk;
-    }
+    inline PK& get_pk() { return this->pk; }
 
+    inline const std::unordered_map<std::string, std::string> &get_De() const { return this->D_e; }
+
+    inline const std::unordered_map<std::string, V_ITEM> &get_Dpv() const { return this->D_pv; }
 };
+
+#ifdef SEC_GDB_SIMPLE_MODE
+extern Client g_client;
+#endif
 
 #endif
