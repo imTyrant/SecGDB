@@ -93,12 +93,18 @@ void H_2(unsigned char *key, size_t key_size, unsigned char *in, size_t data_siz
 */
 size_t F(unsigned char *key, size_t key_size, unsigned char *in, size_t data_size, unsigned char *out)
 {
-    size_t rtn_size;
-
+    size_t rtn_size = 0;
+#ifdef F_FUNCTION_DISABLE
+    unsigned char tmp[KEY_SIZE] = {0};
+    memcpy(tmp, in, (data_size > KEY_SIZE) ? KEY_SIZE : data_size);
+    memcpy(out, tmp, KEY_SIZE);
+    return KEY_SIZE;
+#else
 #ifdef SECURITY_LEVEL_128
     HMAC(EVP_sha1(), key, (int)key_size, in, data_size, out, (unsigned int *)&rtn_size);
 #else
     HMAC(EVP_sha256(), key, (int)key_size, in, data_size, out, (unsigned int *)&rtn_size);
+#endif
 #endif
 
     return rtn_size;
@@ -118,7 +124,7 @@ bool sample_key(SK &sk, PK &pk)
 
     if (!in_file.fail())
     {
-        // in_file.getline((char *)rand_buff, KEY_SIZE);
+        in_file.getline((char *)rand_buff, KEY_SIZE);
         in_file.close();
     }
     else
@@ -143,25 +149,14 @@ bool sample_key(SK &sk, PK &pk)
         return false;
     }
 
-    // char buff[SECURITY_LEVEL];
-    // size_t byte_got = 0;
-
     mpz_urandomb(k1.get_mpz_t(), rand_st, SECURITY_LEVEL);
-    // byte_got = get_mpz_raw(buff, k1.get_mpz_t());
-    // sk.k_1 = string(buff, byte_got);
-    // memset(buff, 0, sizeof(buff));
     sk.k_1 = let_mpz_raw_to_str(k1.get_mpz_t());
 
     mpz_urandomb(k2.get_mpz_t(), rand_st, SECURITY_LEVEL);
-    // byte_got = get_mpz_raw(buff, k2.get_mpz_t());
-    // sk.k_2 = string(buff, byte_got);
-    // memset(buff, 0, sizeof(buff));
-    sk.k_2 = let_mpz_raw_to_str(k1.get_mpz_t());
+    sk.k_2 = let_mpz_raw_to_str(k2.get_mpz_t());
 
     mpz_urandomb(k3.get_mpz_t(), rand_st, SECURITY_LEVEL);
-    // byte_got = get_mpz_raw(buff, k3.get_mpz_t());
-    // sk.k_3 = string(buff, byte_got);
-    sk.k_3 = let_mpz_raw_to_str(k1.get_mpz_t());
+    sk.k_3 = let_mpz_raw_to_str(k3.get_mpz_t());
 
     gmp_randclear(rand_st);
 

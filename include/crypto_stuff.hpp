@@ -23,14 +23,11 @@ typedef struct _JL_PK
     mpz_class k;
 } JL_PK;
 
-// k_1, k_2, k_3 are stored in vector as I cannot find a good container 
-// for raw char. But in the <client.cpp> I use std::string to store 
-// raw char. Uhn... it is little confusing.
 typedef struct _SK
 {
-    std::vector<unsigned char> k_1;
-    std::vector<unsigned char> k_2;
-    std::vector<unsigned char> k_3;
+    std::string k_1;
+    std::string k_2;
+    std::string k_3;
     JL_SK jl_sk;
 } SK;
 
@@ -40,6 +37,12 @@ typedef struct _PK
 } PK;
 
 /******************** Functions ********************/
+size_t get_mpz_raw(void* buff, mpz_ptr src);
+
+std::string let_mpz_raw_to_str(mpz_ptr src);
+
+void set_mpz_raw(mpz_ptr dest, size_t size, const void* buff);
+
 void H_1(
     unsigned char *key,
     size_t key_size,
