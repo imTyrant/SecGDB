@@ -1,0 +1,28 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <obliv.oh>
+
+#include "compare.h"
+
+void compare(void* args)
+{
+    OBLIVC_IO *input = (OBLIVC_IO*) args;
+
+    obliv long long a1, a2, r1, r2;
+
+    a1 = feedOblivLLong(input->a_1, OBLIVC_PROXY);
+    a2 = feedOblivLLong(input->a_2, OBLIVC_PROXY);
+    r1 = feedOblivLLong(input->r_1, OBLIVC_SERVER);
+    r2 = feedOblivLLong(input->r_2, OBLIVC_SERVER);
+    
+    obliv long long left = a1 - r1;
+    obliv long long right = a2 - r2;
+
+    obliv int rtn = 0;
+
+    obliv if (left > right) { rtn = 1; }
+    else obliv if (left == right) { rtn = 0; }
+    else { rtn = -1; }
+
+    revealOblivInt(&input->result, rtn, 0);
+}

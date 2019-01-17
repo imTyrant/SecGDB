@@ -1,6 +1,9 @@
 #ifndef H_DATA_STRUCT
 #define H_DATA_STRUCT
 
+#define OBLIVC_PROXY 1
+#define OBLIVC_SERVER 2
+
 typedef struct _INPUT
 {
     long long a_1;
