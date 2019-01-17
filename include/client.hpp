@@ -7,7 +7,7 @@
 
 #include "global.h"
 #include "graph.hpp"
-#include "dictionary_items.hpp"
+#include "data_structures.hpp"
 #include "crypto_stuff.hpp"
 
 class Client

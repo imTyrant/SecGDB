@@ -12,7 +12,7 @@
 #include "ggm.h"
 #include "graph.hpp"
 #include "crypto_stuff.hpp"
-#include "dictionary_items.hpp"
+#include "data_structures.hpp"
 
 using namespace std;
 
@@ -100,7 +100,9 @@ void Client::enc_graph(const string &file_path)
         {
             //Firstly, encrypt the weight of the each edge of the vertex v.
             E_ITEM data_tmp;
-            JL_encryption(this->sk, this->pk, e.weight, data_tmp.weight);
+
+            JL_encryption(this->pk, e.weight, data_tmp.weight); 
+
             unsigned char F_1_v[KEY_SIZE];
             unsigned char P_v[KEY_SIZE];
 
