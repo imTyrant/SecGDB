@@ -5,6 +5,8 @@
 #include <gmpxx.h>
 
 #include "global.h"
+#include "ggm.h"
+
 
 typedef struct _V_ITEM
 {
@@ -38,10 +40,14 @@ struct hash<mpz_t>
 };
 } // namespace std
 
-// namespace std
-// {
-//     template<>
-//     struct hash<vector<>>
-// }
+typedef struct _REQUEST
+{
+    std::string F_1_s;
+    std::string P_s;
+    std::string P_t;
+    Constrain constrained_key;
+    size_t ctr;
+    bool validity;
+} Request;
 
 #endif
