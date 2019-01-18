@@ -50,12 +50,20 @@ int main(int argc, char* argv[])
 
     if (req.validity)
     {
-        mpz_class result = server.query_dist(req.F_1_s, req.P_s, req.P_t, req.constrained_key, req.ctr);
-        mpz_class out;
-        JL_decryption(g_client.get_sk(), g_client.get_pk(), result, out);
-        cout << "================================================\n";
-        cout << "Distance: " << out.get_str() << "\n";
-        cout << "Total compare times" << g_compare_counter << "\n";
+        // mpz_class dist_result = server.query_dist(req.F_1_s, req.P_s, req.P_t, req.constrained_key, req.ctr);
+        // mpz_class dis_out;
+        // JL_decryption(g_client.get_sk(), g_client.get_pk(), dist_result, dis_out);
+        // cout << "========================DIST========================\n";
+        // cout << "Distance: " << dis_out.get_str() << "\n";
+        // cout << "Total compare times " << g_compare_counter << "\n";
+
+        mpz_class flow_result = server.query_flow(req.F_1_s, req.P_s, req.P_t, req.constrained_key, req.ctr);
+        mpz_class flow_out;
+        JL_decryption(g_client.get_sk(), g_client.get_pk(), flow_result, flow_out);
+        cout << "========================FLOW========================\n";
+        cout << "Flow: " << flow_out.get_str() << "\n";
+        cout << "Total compare times " << g_compare_counter << "\n";
+
         ggm_free_constrain(&req.constrained_key);
     }
     else
@@ -148,5 +156,5 @@ int main(int argc, char* argv[])
         // cout << "_________________________________________________\n";
     }
     */
-    return EXIT_SUCCESS;
+   return EXIT_SUCCESS;
 }
