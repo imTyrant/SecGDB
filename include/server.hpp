@@ -90,14 +90,17 @@ class Server
     std::unordered_map<std::string, mpz_class> xi;
 
     // Store an temporary graph in server with blinded vertex and encrypted weight.
-    std::unordered_map<std::string, std::list<Edge>> verteices;
+    Graph<mpz_class> sever_graph;
 
+    // An encrypted zero.
+    mpz_class zero;
 
   public:
     Server();
     Server(const std::unordered_map<std::string, std::string> &de, const PK &pk);
     ~Server();
 
+    void build_server_graph(std::string &F_1_s, std::string &P_s, std::string &P_t, Constrain &constrained_key, size_t ctr);
     bool set_level(std::string &F_1_s, std::string &P_s, std::string &P_t, Constrain &constrained_key, size_t ctr);
     mpz_class augment_path(std::string &F_1_u, std::string &P_u, std::string &P_t, Constrain &constrain, size_t ctr, mpz_class gamma);
     mpz_class query_flow(std::string &F_1_s, std::string &P_s, std::string &P_t, Constrain &constrained_key, size_t ctr);
