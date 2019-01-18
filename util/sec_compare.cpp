@@ -2,6 +2,9 @@
 #include <fstream>
 #include <gmpxx.h>
 #include <thread>
+#include <mutex>
+#include <chrono>
+#include <condition_variable>
 
 extern "C"
 {
@@ -21,6 +24,8 @@ using namespace std;
 string remote_host("localhost");
 string port("1234");
 
+condition_variable cv;
+
 void remote_simulator(mpz_class left, mpz_class right)
 {
     OBLIVC_IO io;
@@ -37,6 +42,8 @@ void remote_simulator(mpz_class left, mpz_class right)
 
     // cout << "ubld_l: " << io.a_1;
     // cout << " \tubld_r: " << io.a_2;
+    
+    cv.notify_one();
 
     if (0 != protocolAcceptTcp2P(&pd, port.c_str()))
     {
@@ -134,9 +141,18 @@ int secure_compare(PK& pk, mpz_class &left, mpz_class &right)
 
     thread remote(remote_simulator, blinded_left, blinded_right);
 
-    // usleep(TIME_INTERVAL); // Sleep some time for preventing misorder of threads.
-    int retry_time = RETRY_TIME;
+    mutex mtx;
 
+    unique_lock <mutex> lck(mtx);
+
+    if(cv.wait_for(lck, chrono::seconds(100)) == cv_status::timeout)
+    {
+        abort();
+    }
+
+    // usleep(TIME_INTERVAL); // Sleep some time for preventing misorder of threads.
+    
+    int retry_time = RETRY_TIME;
     while (0 != protocolConnectTcp2P(&pd, remote_host.c_str(), port.c_str()) && retry_time > 0)
     {
         if (--retry_time == 0) 
