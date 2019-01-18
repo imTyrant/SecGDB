@@ -50,7 +50,7 @@ Request Client::give_request(std::string src, std::string dest)
 
 void Client::enc_graph(const string &file_path)
 {
-    this->graph.build_graph(file_path);
+    build_graph(this->graph, file_path);
 
     for (auto v : this->graph.vertices)
     {

@@ -15,7 +15,7 @@ class Client
   private:
     SK sk;
     PK pk;
-    Graph graph;
+    Graph<size_t> graph;
 
     // D_v which is outsourced to the proxy.
     // The key is raw char array contained by std::string.
@@ -48,7 +48,7 @@ class Client
     void store_dcv();
     void store_de();
 
-    inline Graph& get_graph() { return this->graph; }
+    inline Graph<size_t>& get_graph() { return this->graph; }
 
     inline SK& get_sk() { return this->sk; }
 
