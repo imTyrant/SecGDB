@@ -84,8 +84,8 @@ void gen_random(mpz_class &r_left, mpz_class &r_right)
     gmp_randseed(rand_st, seed.get_mpz_t());
 
     // Subtract 2 is for preventing overflow
-    mpz_urandomb(r_left.get_mpz_t(), rand_st, sizeof(long long) * 8  - 2);
-    mpz_urandomb(r_right.get_mpz_t(), rand_st, sizeof(long long) * 8  - 2);
+    mpz_urandomb(r_left.get_mpz_t(), rand_st, sizeof(OBLIVC_DATA_TYPE) * 8  - 2);
+    mpz_urandomb(r_right.get_mpz_t(), rand_st, sizeof(OBLIVC_DATA_TYPE) * 8  - 2);
 
     gmp_randclear(rand_st);    
 }
@@ -104,6 +104,7 @@ int secure_compare(PK& pk, mpz_class &left, mpz_class &right)
     else if (left == right) {return 0; }
     else { return -1; }
 #else
+    auto compare_start = chrono::high_resolution_clock::now();
     mpz_class r_left;
     mpz_class r_right;
     mpz_class r_left_enc;
@@ -145,6 +146,8 @@ int secure_compare(PK& pk, mpz_class &left, mpz_class &right)
 
     unique_lock <mutex> lck(mtx);
 
+    auto wait_start = chrono::high_resolution_clock::now();
+
     if(cv.wait_for(lck, chrono::seconds(100)) == cv_status::timeout)
     {
         abort();
@@ -164,12 +167,21 @@ int secure_compare(PK& pk, mpz_class &left, mpz_class &right)
         // abort();
     }
 
+    auto wait_end = chrono::high_resolution_clock::now();
+    chrono::duration<double> wait_cost = wait_end - wait_start;
+    g_total_wait_time += wait_cost.count();
+
     setCurrentParty(&pd, OBLIVC_SERVER);
     execYaoProtocol(&pd, compare, &io);
     cleanupProtocol(&pd);
 
     remote.join();
     g_compare_counter ++;
+
+    auto compare_end = chrono::high_resolution_clock::now();
+    chrono::duration<double> compare_cost = compare_end - compare_start;
+    g_total_compare_time += compare_cost.count();
+
     return io.result;
 #endif
 }
@@ -188,3 +200,4 @@ bool secure_compare_equal(PK& pk, mpz_class &left, mpz_class &right)
 {
     return secure_compare(pk, left, right) == 0;
 }
+

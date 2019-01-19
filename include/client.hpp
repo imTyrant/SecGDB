@@ -48,6 +48,14 @@ class Client
     void store_dcv();
     void store_de();
 
+    inline void clean_up()
+    {
+      this->graph.clear();
+      this->D_cv.clear();
+      this->D_pv.clear();
+      this->D_e.clear();
+    }
+
     inline Graph<size_t>& get_graph() { return this->graph; }
 
     inline SK& get_sk() { return this->sk; }

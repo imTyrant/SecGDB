@@ -4,12 +4,14 @@
 #define OBLIVC_SERVER 1
 #define OBLIVC_PROXY 2
 
+typedef int OBLIVC_DATA_TYPE;
+
 typedef struct _OBLIVC_IO
 {
-    long long a_1;
-    long long a_2;
-    long long r_1;
-    long long r_2;
+    OBLIVC_DATA_TYPE a_1;
+    OBLIVC_DATA_TYPE a_2;
+    OBLIVC_DATA_TYPE r_1;
+    OBLIVC_DATA_TYPE r_2;
     int result;
 } OBLIVC_IO;
 

@@ -28,6 +28,12 @@ Request Client::give_request(std::string src, std::string dest)
         return rtn;
     }
 
+    if (src == dest)
+    {
+        rtn.validity = false;
+        return rtn;
+    }
+
     rtn.validity = true;
     rtn.ctr = this->D_cv[src].ctr;
 
