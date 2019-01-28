@@ -427,6 +427,13 @@ mpz_class Server::query_flow(string &F_1_s, string &P_s, string &P_t, Constrain 
 
 mpz_class Server::query_dist(std::string &F_1_s, std::string &P_s, std::string &P_t, Constrain &constrained_key, size_t ctr)
 {
+    CACHE_ITEM cache_tmp = {P_s, P_t};
+    if (this->cache.find(cache_tmp) != this->cache.end())
+    {
+        g_s_use_cache++;
+        return this->cache[cache_tmp];
+    }
+
     mpz_class c_qd;
     JL_encryption(this->pk, 0, c_qd);
 
@@ -480,7 +487,9 @@ mpz_class Server::query_dist(std::string &F_1_s, std::string &P_s, std::string &
     }
 
     ggm_free_keys(&sub_keys);
-
+    g_s_ttt = 0;
+    g_s_cccddd = 0;
+    g_s_total_cnttt = ctr;
     while(!fh.empty())
     {
         HEAP_ITEM hi = fh.top();
@@ -490,6 +499,9 @@ mpz_class Server::query_dist(std::string &F_1_s, std::string &P_s, std::string &
         string &P_u = hi.vetex;
         if (P_u == P_t)
         {
+            this->cache.emplace(cache_tmp, xi[P_u]);
+            string tmp = let_mpz_raw_to_str(xi[P_u].get_mpz_t());
+            g_s_cache_size += 2 * KEY_SIZE + tmp.size();
             return xi[P_u];
         }
         size_t ctr_inwhile = 0;
@@ -505,6 +517,7 @@ mpz_class Server::query_dist(std::string &F_1_s, std::string &P_s, std::string &
         
 #else
 #endif
+        g_s_total_cnttt += ctr_inwhile;
         if (ctr_inwhile != 0)
         {
             Subkeys sub_key_inwhile;
@@ -558,20 +571,23 @@ mpz_class Server::query_dist(std::string &F_1_s, std::string &P_s, std::string &
                 }
 
                 D_key[P_v_i] = F_1_vi;
+                g_s_cccddd ++;
             }
             
             ggm_free_keys(&sub_key_inwhile);
             ggm_free_constrain(&con);
         }
-        
+        g_s_ttt++;
     }
-
+    this->cache.emplace(cache_tmp, c_qd);
+    string tmp = let_mpz_raw_to_str(c_qd.get_mpz_t());
+    g_s_cache_size += 2 * KEY_SIZE + tmp.size();
     return c_qd;
 }
 
 
 
-Server::Server(const unordered_map<string, string> &de, const PK &pk) : D_e(de), pk(pk), level(), D_key(), xi(), path(), sever_graph(), zero()
+Server::Server(const unordered_map<string, string> &de, const PK &pk) : D_e(de), pk(pk), level(), D_key(), xi(), path(), sever_graph(), zero(), cache()
 {
     JL_encryption(this->pk, 0, this->zero);
 }
