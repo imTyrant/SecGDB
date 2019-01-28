@@ -44,7 +44,6 @@ void remote_simulator(mpz_class left, mpz_class right)
     // cout << " \tubld_r: " << io.a_2;
     
     cv.notify_one();
-
     if (0 != protocolAcceptTcp2P(&pd, port.c_str()))
     {
         cout << "Obliv-c listening failed\n";
@@ -100,6 +99,7 @@ void gen_random(mpz_class &r_left, mpz_class &r_right)
 int secure_compare(PK& pk, mpz_class &left, mpz_class &right)
 {
 #ifdef SEC_GDB_WITHOUT_ENCRYPTION
+    g_compare_counter++;
     if (left > right) { return 1; }
     else if (left == right) {return 0; }
     else { return -1; }
@@ -150,6 +150,7 @@ int secure_compare(PK& pk, mpz_class &left, mpz_class &right)
 
     if(cv.wait_for(lck, chrono::seconds(100)) == cv_status::timeout)
     {
+        cout << "Abort since remote timeout.\n";
         abort();
     }
 
@@ -158,26 +159,24 @@ int secure_compare(PK& pk, mpz_class &left, mpz_class &right)
     int retry_time = RETRY_TIME;
     while (0 != protocolConnectTcp2P(&pd, remote_host.c_str(), port.c_str()) && retry_time > 0)
     {
+        cout << "Try connection failed, and left: " << retry_time << "\n";
         if (--retry_time == 0) 
         {
             cout << "Obliv-c connection failed, retry time left: " << retry_time << "\n";
             abort();
         }
         usleep(TIME_INTERVAL);
-        // abort();
     }
 
     auto wait_end = chrono::high_resolution_clock::now();
     chrono::duration<double> wait_cost = wait_end - wait_start;
     g_total_wait_time += wait_cost.count();
-
     setCurrentParty(&pd, OBLIVC_SERVER);
     execYaoProtocol(&pd, compare, &io);
     cleanupProtocol(&pd);
 
     remote.join();
     g_compare_counter ++;
-
     auto compare_end = chrono::high_resolution_clock::now();
     chrono::duration<double> compare_cost = compare_end - compare_start;
     g_total_compare_time += compare_cost.count();
