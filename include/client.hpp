@@ -40,13 +40,14 @@ class Client
     void keygen();
     void enc_graph(const std::string &file_path);
     Request give_request(std::string src, std::string dest);
+    void update_graph(const std::string &src, const std::string &dest, const size_t weight, int op);
 
     void store_sk();
     void store_pk();
 
-    void store_dpv();
-    void store_dcv();
-    void store_de();
+    void store_dpv(const std::string &filePath);
+    void store_dcv(const std::string &filePath);
+    void store_de(const std::string &filePath);
 
     inline void clean_up()
     {
@@ -69,6 +70,9 @@ class Client
 
 #ifdef SEC_GDB_SIMPLE_MODE
 extern Client g_client;
+extern double g_c_update_clt;
+extern double g_c_update_srv;
+extern double g_c_update_prxy;
 #endif
 
 #endif

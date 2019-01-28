@@ -1,6 +1,8 @@
 #include <iostream>
 #include <algorithm>
 #include <iomanip>
+#include <chrono>
+#include <fstream>
 
 #include <string>
 #include <unordered_map>
@@ -16,6 +18,147 @@
 
 using namespace std;
 
+void Client::store_dcv(const string &filePath)
+{
+    ofstream outfile(filePath, ios::out);
+    if (!outfile)
+    {
+        cout << "Cannot write dcv to file\n";
+        exit(EXIT_FAILURE);
+    }
+    for (auto it = this->D_cv.begin(); it != this->D_cv.end(); it++)
+    {
+        outfile << it->first << "\n";
+        outfile << it->second.ctr << "\n";
+        outfile << it->second.master_key << "\n\n";
+    }
+    outfile.close();
+}
+
+void Client::store_dpv(const string &filePath)
+{
+    ofstream outfile(filePath, ios::out);
+    if (!outfile)
+    {
+        cout << "Cannot write dpv to file\n";
+        exit(EXIT_FAILURE);
+    }
+    for (auto it = this->D_pv.begin(); it != this->D_pv.end(); it++)
+    {
+        outfile << it->first << "\n";
+        outfile << it->second.ctr << "\n";
+        outfile << it->second.master_key << "\n\n";
+    }
+    outfile.close();
+}
+
+void Client::store_de(const string &filePath)
+{
+    ofstream outfile(filePath, ios::out);
+    if (!outfile)
+    {
+        cout << "Cannot write de to file\n";
+        exit(EXIT_FAILURE);
+    }
+    for (auto it = this->D_e.begin(); it != this->D_e.end(); it++)
+    {
+        outfile << it->first << "\n";
+        outfile << it->second.size() << "\n";
+        outfile << it->second << "\n\n";
+    }
+    outfile.close();
+}
+
+void Client::update_graph(const std::string &src, const std::string &dest, const size_t weight, int op)
+{
+    auto timer_client_start = chrono::high_resolution_clock::now();
+    unsigned char F_1_s[KEY_SIZE] = {0};
+    unsigned char F_2_s[KEY_SIZE] = {0};
+    unsigned char P_s[KEY_SIZE] = {0};
+    unsigned char F_1_t[KEY_SIZE] = {0};
+    unsigned char F_2_t[KEY_SIZE] = {0};
+    unsigned char P_t[KEY_SIZE] = {0};
+
+    F((unsigned char *)sk.k_1.c_str(), sk.k_1.size(), (unsigned char *)src.c_str(), src.size(), F_1_s);
+    F((unsigned char *)sk.k_2.c_str(), sk.k_2.size(), (unsigned char *)src.c_str(), src.size(), F_2_s);
+    F((unsigned char *)sk.k_3.c_str(), sk.k_3.size(), (unsigned char *)src.c_str(), src.size(), P_s);
+
+    F((unsigned char *)sk.k_1.c_str(), sk.k_1.size(), (unsigned char *)dest.c_str(), src.size(), F_1_t);
+    F((unsigned char *)sk.k_2.c_str(), sk.k_2.size(), (unsigned char *)dest.c_str(), src.size(), F_2_t);
+    F((unsigned char *)sk.k_3.c_str(), sk.k_3.size(), (unsigned char *)dest.c_str(), src.size(), P_t);
+
+    if (op == SEC_GDB_UPDATE_OP_ADD)
+    {
+        // Update local.
+        if (this->D_cv.find(src) == this->D_cv.end())
+        {
+            this->D_cv[src] = V_ITEM{0, string((char*)F_2_s, KEY_SIZE)};
+        }
+        this->D_cv[src].ctr += 1;
+
+        GGM ggm = {KEY_SIZE, MAX_GGM_DEPTH};
+        Constrain con;
+        Subkeys subk;
+
+        ggm_find_best_range_cover(&ggm, (char*)this->D_cv[src].master_key.c_str(), this->D_cv[src].ctr - 1, this->D_cv[src].ctr - 1, &con);
+        ggm_derive(&ggm, &con, &subk);
+
+        unsigned char UT[KEY_SIZE] = {0};
+        unsigned char mask[KEY_SIZE] = {0};
+
+        H_1(F_1_s, KEY_SIZE, (unsigned char*)subk.keys[0], KEY_SIZE, UT);
+        H_2(F_1_s, KEY_SIZE, (unsigned char *)subk.keys[0], KEY_SIZE, mask);
+
+        mpz_class w(weight);
+        string weight_str = let_mpz_raw_to_str(w.get_mpz_t());
+
+        unsigned char data[KEY_SIZE * 2 + weight_str.size()] = {0};
+
+        std::copy(P_t, P_t + KEY_SIZE, data);
+        std::copy(F_1_t, F_1_t + KEY_SIZE, data + KEY_SIZE);
+        std::copy(weight_str.begin(), weight_str.end(), data + 2 * KEY_SIZE);
+
+        unsigned char data_masked[KEY_SIZE * 2 + weight_str.size()] = {0};
+
+        masking(data, sizeof(data), mask, sizeof(mask), data_masked);
+
+        auto timer_client_finish = chrono::high_resolution_clock::now();
+        chrono::duration<double> time_client = timer_client_finish - timer_client_start;
+        g_c_update_clt = time_client.count();
+
+        // Update proxy.
+        auto timer_proxy_start = chrono::high_resolution_clock::now();
+        string str_P_s((char*)P_s, KEY_SIZE);
+
+        if (this->D_pv.find(str_P_s) == this->D_pv.end())
+        {
+            this->D_cv[str_P_s] = V_ITEM{0, string((char*)F_2_s, KEY_SIZE)};
+        }
+        this->D_cv[str_P_s].ctr += 1;
+        auto timer_proxy_finish = chrono::high_resolution_clock::now();
+        chrono::duration<double> time_proxy = timer_proxy_finish - timer_proxy_start;
+        g_c_update_prxy = time_proxy.count();
+
+        // Update server.
+        auto timer_server_start = chrono::high_resolution_clock::now();
+
+        this->D_e[string((char *)UT, sizeof(UT))] = string((char *)data_masked, sizeof(data_masked));
+
+        auto timer_server_finish = chrono::high_resolution_clock::now();
+        chrono::duration<double> time_server = timer_server_finish - timer_server_start;
+        g_c_update_srv = time_server.count();
+
+        ggm_free_constrain(&con);
+        ggm_free_keys(&subk);
+        return;
+    }
+    if (op == SEC_GDB_UPDATE_OP_DEL)
+    {
+        
+        return;
+    }
+}
+
 Request Client::give_request(std::string src, std::string dest)
 {
     Request rtn;
@@ -28,7 +171,7 @@ Request Client::give_request(std::string src, std::string dest)
         return rtn;
     }
 
-    if (src == dest)
+    if (src == dest || this->graph.vertices[src].out_degree == 0 || this->graph.vertices[dest].in_degree == 0)
     {
         rtn.validity = false;
         return rtn;

@@ -7,6 +7,8 @@
 #include "global.h"
 #include "ggm.h"
 
+#define SEC_GDB_UPDATE_OP_ADD   1
+#define SEC_GDB_UPDATE_OP_DEL   2
 
 typedef struct _V_ITEM
 {
