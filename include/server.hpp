@@ -16,6 +16,8 @@
 #include "client.hpp"
 #include "sec_compare.hpp"
 
+extern size_t g_fh_compare_time;
+
 typedef struct _ENC_E_ITEM
 {
     std::string s;
@@ -62,9 +64,40 @@ struct heap_item_compare
 {
     bool operator()(const HEAP_ITEM& n1, const HEAP_ITEM& n2) const
     {
+        g_fh_compare_time++;
         return secure_compare_greater(g_client.get_pk(), const_cast<mpz_class&>(n1.distance),  const_cast<mpz_class&>(n2.distance));
         // return n1.distance > n2.distance;
     }
+};
+
+typedef struct _CACHE_ITEM
+{
+    std::string src;
+    std::string dest;
+} CACHE_ITEM;
+
+namespace std
+{
+    template<>
+    struct equal_to<CACHE_ITEM>
+    {
+        bool operator()(const CACHE_ITEM &x, const CACHE_ITEM &y) const
+        {
+            std::string tmp_x(x.src); tmp_x += x.dest;
+            std::string tmp_y(y.src); tmp_y += y.dest;
+            return tmp_x == tmp_y;
+        }
+    };
+
+    template<>
+    struct hash<CACHE_ITEM>
+    {
+        size_t operator()(const CACHE_ITEM &e) const
+        {
+            std::string tmp(e.src); tmp += e.dest;
+            return std::hash<string>()(tmp);
+        }
+    };
 };
 
 typedef boost::heap::fibonacci_heap<HEAP_ITEM, boost::heap::compare<heap_item_compare>> FIBO_HEAP;
@@ -95,6 +128,9 @@ class Server
     // An encrypted zero.
     mpz_class zero;
 
+    // Cache store history.
+    std::unordered_map<CACHE_ITEM, mpz_class> cache;
+
   public:
     Server();
     Server(const std::unordered_map<std::string, std::string> &de, const PK &pk);
@@ -106,5 +142,12 @@ class Server
     mpz_class query_flow(std::string &F_1_s, std::string &P_s, std::string &P_t, Constrain &constrained_key, size_t ctr);
     mpz_class query_dist(std::string &F_1_s, std::string &P_s, std::string &P_t, Constrain &constrained_key, size_t ctr);
 };
+
+extern int g_s_ttt;
+extern int g_s_cccddd;
+extern int g_s_total_cnttt;
+
+extern size_t g_s_use_cache;
+extern size_t g_s_cache_size;
 
 #endif

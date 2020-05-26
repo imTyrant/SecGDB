@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
 
     Graph graph(6);
 
-    graph.build_graphic("test.txt");
+    graph.build_graphic("../data/exh/email-Enron.data");
 
     Dinic di(graph);
 
@@ -261,7 +261,7 @@ int main(int argc, char *argv[])
     // }
 
 
-    cout << di.find_max_flow("A", "F") << "\n";
+    cout << di.find_max_flow("4892", "36425") << "\n";
 
     return EXIT_SUCCESS;
 }

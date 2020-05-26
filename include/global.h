@@ -31,6 +31,11 @@ typedef unsigned char BYTE;
 
 #define SEC_GDB_WITHOUT_ENCRYPTION
 
+// #define F_FUNCTION_DISABLE
+
+#define MAX_EDGE_WEIGHT 10000
+#define INFIENITY 1000000
+
 void log_memory(const void* ptr, size_t size);
 
 #ifdef __cplusplus

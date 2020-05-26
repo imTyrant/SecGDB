@@ -2,6 +2,8 @@
 #include <boost/algorithm/string.hpp>
 #include <vector>
 #include <thread>
+#include <unistd.h>
+#include <chrono>
 
 extern "C"
 {
@@ -78,7 +80,8 @@ int main(int argc, char **argv)
 
         input.r_1 = r1;
         input.r_2 = r2;
-
+        
+        auto all_start = chrono::high_resolution_clock::now();
         thread remote(secure_compare, a1 + r1, a2 + r2);
         usleep(100000);
 
@@ -87,11 +90,20 @@ int main(int argc, char **argv)
             cout << "Connection failed\n";
             return EXIT_FAILURE;
         }
+
+        auto start = chrono::high_resolution_clock::now();
         setCurrentParty(&pd, OBLIVC_SERVER);
         execYaoProtocol(&pd, compare, &input);
         cleanupProtocol(&pd);
+        
+        
 
         remote.join();
+        auto end = chrono::high_resolution_clock::now();
+        chrono::duration<double> compare_time = end - start;
+        chrono::duration<double> all_time = end - all_start;
+        cout << compare_time.count() << endl;
+        cout << all_time.count() - compare_time.count() - 0.1 << endl;
 
         if (supposed_result == input.result)
         {

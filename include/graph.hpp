@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <list>
+#include <vector>
 
 struct Vertex
 {
@@ -61,14 +62,14 @@ class Graph
     // typedef typename std::list<Edge<T>>::iterator iterator;
 
     std::unordered_map<std::string, Vertex> vertices;
-    std::unordered_map<Vertex, std::list<Edge<T>>, std::hash<Vertex>> adjacency_list;
+    std::unordered_map<Vertex, std::vector<Edge<T>>, std::hash<Vertex>> adjacency_list;
 
     size_t num_vertices;
     size_t num_edges;
 
     Graph();
 
-    typename std::list<Edge<T>>::iterator find_edge(const Vertex &src, const Vertex &dest);
+    typename std::vector<Edge<T>>::iterator find_edge(const Vertex &src, const Vertex &dest);
 
     void add_edge(std::string &src, std::string &dest, T &weight);
 

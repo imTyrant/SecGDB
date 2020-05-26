@@ -53,9 +53,9 @@ void build_graph(Graph<size_t> &graph, const string &file_path)
  * else return the end of the list.
 */
 template <class T>
-typename list<Edge<T>>::iterator Graph<T>::find_edge(const Vertex &src, const Vertex &dest)
+typename vector<Edge<T>>::iterator Graph<T>::find_edge(const Vertex &src, const Vertex &dest)
 {
-    list<Edge<T>> &tmp = this->adjacency_list[src];
+    vector<Edge<T>> &tmp = this->adjacency_list[src];
     for (auto it = tmp.begin(); it != tmp.end(); it++)
     {
         if (it->dest == dest)
@@ -78,7 +78,7 @@ void Graph<T>::add_edge(string &src, string &dest, T &weight)
         Vertex v_src{src, 0, 0};
         this->vertices[src] = v_src;
         this->num_vertices++;
-        this->adjacency_list[v_src] = list<Edge<T>>();
+        this->adjacency_list[v_src] = vector<Edge<T>>();
     }
 
     if (this->vertices.find(dest) == this->vertices.end())
@@ -86,7 +86,7 @@ void Graph<T>::add_edge(string &src, string &dest, T &weight)
         Vertex v_dest{dest, 0, 0};
         this->vertices[dest] = v_dest;
         this->num_vertices++;
-        this->adjacency_list[v_dest] = list<Edge<T>>();
+        this->adjacency_list[v_dest] = vector<Edge<T>>();
     }
 
     auto tmp = this->find_edge(this->vertices[src], this->vertices[dest]);
