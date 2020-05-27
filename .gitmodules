@@ -4,3 +4,6 @@
 [submodule "labhe"]
 	path = labhe
 	url = https://github.com/haslab/labhe.git
+[submodule "cxxopts"]
+	path = cxxopts
+	url = https://github.com/jarro2783/cxxopts.git
