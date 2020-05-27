@@ -20,8 +20,8 @@ OBLIV_C_HEAD_PATH = -I $(OBLIV_C_PATH)/src/ext/oblivc
 LIBS = -lgmpxx -lgmp -lcrypto
 LIBS_FOR_OBLIVC = -lgcrypt -pthread
 
-OBJS = main.o client.o server.o ./util/ggm.o ./util/graph.o ./util/crypto_stuff.o \
-		./util/compare.o ./util/sec_compare.o
+OBJS = main.o client.o server.o ./utils/ggm.o ./utils/graph.o ./utils/crypto_stuff.o \
+		./utils/compare.o ./utils/sec_compare.o
 
 .PHONY : all
 all : main.o client.o server.o utils
@@ -38,12 +38,12 @@ test_compare : main.o client.o utils
 
 .PHONY : utils
 utils :
-	$(MAKE) -C ./util all
+	$(MAKE) -C ./utils all
 
 # graph.o sec_compare.o compare.o ggm.o crypto_stuff.o : utils
 
 test_crypto : 
-	$(MAKE) -C ./util test_crypto
+	$(MAKE) -C ./utils test_crypto
 
 
 client.o: client.cpp
@@ -57,5 +57,5 @@ main.o: main.cpp
 
 .PHONY : clean
 clean :
-	$(MAKE) -C ./util clean
+	$(MAKE) -C ./utils clean
 	-rm -rfv *.o a.out 

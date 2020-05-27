@@ -1,0 +1,14 @@
+.vscode/
+labhe_test/
+oblivc_test/
+labhe/
+obliv-c/
+data/*
+a.out
+*.o
+core
+test.txt
+benchmark_result/
+imgs/
+img/
+build/
