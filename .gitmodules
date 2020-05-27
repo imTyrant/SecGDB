@@ -1,12 +1,12 @@
 [submodule "obliv-c"]
-	path = obliv-c
+	path = depends/obliv-c
 	url = https://github.com/samee/obliv-c
 [submodule "labhe"]
-	path = labhe
+	path = depends/labhe
 	url = https://github.com/haslab/labhe.git
 [submodule "cxxopts"]
-	path = cxxopts
+	path = depends/cxxopts
 	url = https://github.com/jarro2783/cxxopts.git
 [submodule "json"]
-	path = json
+	path = depends/json
 	url = https://github.com/ArthurSonzogni/nlohmann_json_cmake_fetchcontent.git

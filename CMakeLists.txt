@@ -5,20 +5,20 @@ project(GraphShield)
 set (CMAKE_CXX_STANDARD 11)
 
 # import labhe
-set(LABHE_DIR ${PROJECT_SOURCE_DIR}/labhe)
+set(LABHE_DIR ${PROJECT_SOURCE_DIR}/depends/labhe)
 include_directories(${LABHE_DIR}/include)
 set (LABHE_LIB ${LABHE_DIR}/build/liblabhe.a)
 
 # import obliv-c
-set(OBLIVC_DIR ${PROJECT_SOURCE_DIR}/obliv-c)
+set(OBLIVC_DIR ${PROJECT_SOURCE_DIR}/depends/obliv-c)
 include_directories(${OBLIVC_DIR}/src/ext/oblivc)
 set (OBLIVC_LIB ${OBLIVC_DIR}/_build/libobliv.a)
 
 # import cxxopts
-include_directories(${PROJECT_SOURCE_DIR}/cxxopts/include)
+include_directories(${PROJECT_SOURCE_DIR}/depends/cxxopts/include)
 
 # import json
-include_directories(${PROJECT_SOURCE_DIR}/json/include)
+include_directories(${PROJECT_SOURCE_DIR}/depends/json/include)
 
 # include
 include_directories(${PROJECT_SOURCE_DIR}/include)
