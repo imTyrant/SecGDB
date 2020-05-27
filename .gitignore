@@ -2,15 +2,14 @@
 
 labhe_test/
 oblivc_test/
-labhe/*
-labhe/build/
+labhe/**
 obliv-c/
 data/
 
 benchmark_result/
 imgs/
 img/
-build/**
+**/build
 
 a.out
 *.o
