@@ -11,6 +11,7 @@ function valid
 echo "Prepare submodules"
 git submodule update --init --recursive
 
+cd depends
 # build obliv-c
 echo "Build Obliv-c"
 cd obliv-c
@@ -28,4 +29,6 @@ cd ..
 mkdir build && cd build && cmake ..
 make
 valid
+cd ..
+
 cd ..
