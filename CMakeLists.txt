@@ -26,6 +26,7 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 # submodules
 add_subdirectory (utils)
 add_subdirectory (oc)
+add_subdirectory (test)
 
 # build main
 add_executable(main main.cpp client.cpp server.cpp)
