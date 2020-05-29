@@ -85,6 +85,8 @@ mpz_class JL_homo_add(PK &pk, mpz_class &left, mpz_class &right);
 
 mpz_class JL_homo_sub(PK &pk, mpz_class &left, mpz_class &right);
 
+mpz_class JL_homo_mul(PK &pk, mpz_class &left, mpz_class &right);
+
 void masking(const void* input, size_t size, unsigned char* mask, size_t mask_size, unsigned char* out);
 
 #endif

@@ -9,7 +9,7 @@ OBLIVCC = $(OBLIV_C_PATH)/bin/oblivcc
 OBLIV_RUNTIME = $(OBLIV_C_PATH)/_build/libobliv.a
 LABHE_S_LIB = $(LABHE_PATH)/build/liblabhe.a
 
-CFLAG = -g -W
+CFLAG = -g -W -DSECURITY_LEVEL_128
 
 CFLAG_FOR_OBLIVC = -D _Float128=double
 

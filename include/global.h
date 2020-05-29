@@ -27,9 +27,9 @@ extern "C"
 
 typedef unsigned char BYTE;
 
-#define SEC_GDB_SIMPLE_MODE
+// #define SEC_GDB_SIMPLE_MODE
 
-#define SEC_GDB_WITHOUT_ENCRYPTION
+// #define SEC_GDB_WITHOUT_ENCRYPTION
 
 // #define F_FUNCTION_DISABLE
 

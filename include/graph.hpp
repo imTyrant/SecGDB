@@ -53,6 +53,16 @@ namespace std
             return x.name == y.name;
         }
     };
+
+    template<typename T>
+    struct hash<Edge<T>>
+    {
+        size_t operator()(const Edge<T> & e) const
+        {
+            return std::hash<string>()(e.src + e.dest);
+        }
+    };
+
 } // namespace std
 
 template<class T>

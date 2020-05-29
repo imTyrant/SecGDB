@@ -269,6 +269,17 @@ mpz_class JL_homo_sub(PK &pk, mpz_class &left, mpz_class &right)
     return rtn;
 }
 
+mpz_class JL_homo_mul(PK &pk, mpz_class &left, mpz_class &right)
+{
+    mpz_class rtn;
+#ifdef SEC_GDB_WITHOUT_ENCRYPTION
+    rtn = left * right;
+#else
+    bhjl_homsmul(rtn.get_mpz_t(), left.get_mpz_t(), right.get_mpz_t(), pk.jl_pk.N.get_mpz_t());
+#endif
+    return rtn;
+}
+
 /**
  * 
 */

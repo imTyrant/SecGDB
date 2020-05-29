@@ -4,6 +4,7 @@
 #include <iostream>
 #include <gmpxx.h>
 
+#include <tuple>
 #include <unordered_map>
 #include <list>
 #include <boost/heap/fibonacci_heap.hpp>
@@ -131,16 +132,25 @@ class Server
     // Cache store history.
     std::unordered_map<CACHE_ITEM, mpz_class> cache;
 
+
+    // simplify functions
+    void recover_masked_edge_info(u_char* F_1_u, u_char* sub_key, string& P_v, string& F_1_v, mpz_class& ei);
+    std::vector<std::tuple<std::string, std::string, mpz_class>> unlock_adjacency_vertexes(std::string& F_1_u, Subkeys& sub_keys, int ctr);
+
   public:
     Server();
     Server(const std::unordered_map<std::string, std::string> &de, const PK &pk);
     ~Server();
+
+    inline const PK &get_pk() const { return pk; }
 
     void build_server_graph(std::string &F_1_s, std::string &P_s, std::string &P_t, Constrain &constrained_key, size_t ctr);
     bool set_level(std::string &F_1_s, std::string &P_s, std::string &P_t, Constrain &constrained_key, size_t ctr);
     mpz_class augment_path(std::string &F_1_u, std::string &P_u, std::string &P_t, Constrain &constrain, size_t ctr, mpz_class gamma);
     mpz_class query_flow(std::string &F_1_s, std::string &P_s, std::string &P_t, Constrain &constrained_key, size_t ctr);
     mpz_class query_dist(std::string &F_1_s, std::string &P_s, std::string &P_t, Constrain &constrained_key, size_t ctr);
+    void page_rank(std::string &F_1_s, std::string &P_s, Constrain &constrained_key, size_t ctr , int epochs);
+    void unlock_graph(std::tuple<Graph<mpz_class>, Graph<mpz_class>>& double_graph, std::string& F_1_s, std::string& P_s, Constrain& constrained_key, size_t ctr);
 };
 
 extern int g_s_ttt;

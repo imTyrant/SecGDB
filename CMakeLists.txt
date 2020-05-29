@@ -4,6 +4,32 @@ project(GraphShield)
 # configuration
 set (CMAKE_CXX_STANDARD 11)
 
+# specify security level
+option(
+    SL_128
+    "Using 128-bits secruity level "
+    ON
+)
+if ("${SL_128}")
+    add_definitions(-DSECURITY_LEVEL_128)
+else()
+    # add_definitions(-DSECURITY_LEVEL_256)
+endif()
+
+# specify simple mode
+option(SIMPLE_MODE "Enable simple model" OFF)
+if (${SIMPLE_MODE} EQUAL ON)
+    add_definitions(-DSEC_GDB_SIMPLE_MODE)
+endif()
+
+# encrypt graph or not
+option(NO_ENCRYPTION "Not encrypt graph" OFF)
+if (${NO_ENCRYPTION} EQUAL ON)
+    add_definitions(-DSEC_GDB_WITHOUT_ENCRYPTION)
+endif()
+
+
+
 # import labhe
 set(LABHE_DIR ${PROJECT_SOURCE_DIR}/depends/labhe)
 include_directories(${LABHE_DIR}/include)
