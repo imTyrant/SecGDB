@@ -73,9 +73,13 @@ void sk_clear(SK &sk);
 
 void pk_clear(PK &pk);
 
+void JL_encryption(JL_PK &jl_pk, mpz_class &in, mpz_class &out);
+
 void JL_encryption(PK &pk, size_t num, mpz_class &out);
 
 void JL_encryption(PK &pk, mpz_class &in, mpz_class &out);
+
+void JL_decryption(JL_SK &jl_sk, JL_PK &jl_pk, mpz_class &in, mpz_class &out);
 
 void JL_decryption(SK &sk, PK &pk, mpz_class &in, size_t* out);
 

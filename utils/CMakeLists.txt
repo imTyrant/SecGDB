@@ -3,4 +3,5 @@ add_library (utils
     ggm.c
     graph.cpp
     sec_compare.cpp
+    mpc.cpp
 )

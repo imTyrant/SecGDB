@@ -1,5 +1,5 @@
 #include <iostream>
-
+#include <tuple>
 #include <unordered_map>
 
 #include <gmpxx.h>
@@ -13,7 +13,7 @@
 
 using namespace std;
 
-Constrain Proxy::look_up(string P_u)
+tuple<Constrain, size_t> Proxy::look_up(string& P_u)
 {
     GGM ggm;
     ggm.key_size = KEY_SIZE;
@@ -21,19 +21,25 @@ Constrain Proxy::look_up(string P_u)
 
     Constrain rtn;
 
-    V_ITEM v_itme = this->D_e[P_u];
+    V_ITEM v_item = this->D_pv[P_u];
 
-    if (v_itme.ctr != 0)
+    if (v_item.ctr != 0)
     {
-        ggm_find_best_range_cover(&ggm, const_cast<char*>(v_itme.master_key.c_str()), 0, v_itme.ctr - 1, &rtn);
+        ggm_find_best_range_cover(&ggm, const_cast<char*>(v_item.master_key.c_str()), 0, v_item.ctr - 1, &rtn);
     }
-
-    return rtn;
+    
+    return make_tuple(rtn, v_item.ctr);
 }
 
-Proxy::Proxy(unordered_map<string, V_ITEM> D_e, PK pk) : D_e(D_e), pk(pk)
+Proxy::Proxy()
+    : D_pv(), pk(), jl_sk()
 {
 
+}
+
+Proxy::Proxy(const unordered_map<string, V_ITEM>& D_pv, const PK& pk, const JL_SK& jl_sk)
+    : D_pv(D_pv), pk(pk), jl_sk(jl_sk)
+{
 }
 
 Proxy::~Proxy()

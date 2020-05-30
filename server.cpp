@@ -16,46 +16,85 @@
 #include "data_structures.hpp"
 
 #ifdef SEC_GDB_SIMPLE_MODE
-#include "client.hpp"
+#include "proxy.hpp"
 #include "sec_compare.hpp"
 #endif
 
 using namespace std;
 
-void Server::build_server_graph(string &F_1_s, string &P_s, string &P_t, Constrain &constrained_key, size_t ctr)
+int contact_and_get_ggm_sub_key(GGM& ggm, Subkeys& sub_key, string& P_t)
 {
-    unordered_set<string> accesed_vertecies;
+    int ctr = 0;
+#ifdef SEC_GDB_SIMPLE_MODE
+    auto result = g_proxy.look_up(P_t);
+    Constrain& con = std::get<0>(result);
+    ctr = std::get<1>(result);
+    if (ctr != 0)
+    {
+        ggm_derive(&ggm, &con, &sub_key);
+    }
+    ggm_free_constrain(&con);
+#else
+    // connect with proxy and eval.
+#endif
+    return ctr;
+}
+
+void Server::recover_masked_edge_info(u_char* F_1_u, u_char* sub_key, string& P_v, string& F_1_v, mpz_class& ei)
+{
+    u_char UT_i[KEY_SIZE];
+    u_char mask[KEY_SIZE];
+
+    H_1(F_1_u, KEY_SIZE, sub_key, KEY_SIZE, UT_i);
+    H_2(F_1_u, KEY_SIZE, sub_key, KEY_SIZE, mask);
+
+    string UT_i_str((char*)UT_i, KEY_SIZE);
+    assert(this->D_e.find(UT_i_str) != this->D_e.end());
+    
+    string& masked_ciph = this->D_e[UT_i_str];
+    u_char ciph_i[masked_ciph.size()];
+    masking(masked_ciph.c_str(), masked_ciph.length(), mask, sizeof(mask), ciph_i);
+
+    P_v = string((char*)ciph_i, KEY_SIZE);
+    F_1_v = string((char*)(ciph_i + KEY_SIZE), KEY_SIZE);
+    set_mpz_raw(ei.get_mpz_t(), sizeof(ciph_i) - 2 * KEY_SIZE, ciph_i + 2 * KEY_SIZE);
+}
+
+vector<tuple<string, string, mpz_class>> Server::unlock_adjacency_vertexes(string& F_1_u, Subkeys& sub_keys, int ctr)
+{
+    vector<tuple<string, string, mpz_class>> rtn;
+    u_char* F_1_u_char = (u_char*)F_1_u.c_str();
+    for (int i = 0; i < ctr; i ++)
+    {
+        string P_vi, F_1_vi;
+        mpz_class ei;
+        recover_masked_edge_info(F_1_u_char, (u_char*)sub_keys.keys[i], P_vi, F_1_vi, ei);
+        rtn.push_back(std::make_tuple(P_vi, F_1_vi, ei));
+    }
+    return rtn;
+}
+
+void Server::build_server_graph(string &F_1_s, string &P_s, string &P_t, Constrain &constrained_key, size_t ctr)
+{   
+    // vertces
+    unordered_set<string> accessed_vertces;
     queue<string> q;
 
-    accesed_vertecies.emplace(P_s);
+    accessed_vertces.emplace(P_s);
 
     GGM ggm = {KEY_SIZE, MAX_GGM_DEPTH};
     Subkeys sub_key;
 
     ggm_derive(&ggm, &constrained_key, &sub_key);
 
-    for(size_t i = 0; i < ctr; i++)
+    auto neighbors = unlock_adjacency_vertexes (F_1_s, sub_key, ctr);
+
+    for (auto each : neighbors)
     {
-        unsigned char UT_i[KEY_SIZE] = {0};
-        unsigned char mask[KEY_SIZE] = {0};
+        string& P_v_i = std::get<0>(each);
+        string& F_1_vi = std::get<1>(each);
+        mpz_class& e_i = std::get<2>(each);
 
-        H_1((unsigned char*)F_1_s.c_str(), KEY_SIZE, (unsigned char*)sub_key.keys[i], KEY_SIZE, UT_i);
-
-        H_2((unsigned char*)F_1_s.c_str(), KEY_SIZE, (unsigned char*)sub_key.keys[i], KEY_SIZE, mask);
-
-        string& masked_ciph_i = this->D_e[string((char*)UT_i, KEY_SIZE)];
-
-        unsigned char ciph_i[masked_ciph_i.length()];
-
-        masking(masked_ciph_i.c_str(), masked_ciph_i.length(), mask, sizeof(mask), ciph_i);
-
-        string P_v_i = string((char*)ciph_i, KEY_SIZE);
-        string F_1_vi = string((char*)(ciph_i + KEY_SIZE), KEY_SIZE);
-
-        string str_e_i = string((char*)(ciph_i + 2 * KEY_SIZE), sizeof(ciph_i) - 2 * KEY_SIZE);
-        mpz_class e_i;
-        set_mpz_raw(e_i.get_mpz_t(), str_e_i.size(), str_e_i.c_str());
-        
         this->sever_graph.add_edge(P_s, P_v_i, e_i);
 
         q.push(P_v_i);
@@ -68,71 +107,29 @@ void Server::build_server_graph(string &F_1_s, string &P_s, string &P_t, Constra
     {
         string P_u = q.front();
         q.pop();
-        accesed_vertecies.emplace(P_u);
+        accessed_vertces.emplace(P_u);
 
-        if (P_u == P_t)
+        Subkeys sub_keys;
+        int ctr_inwhile = contact_and_get_ggm_sub_key(ggm, sub_keys, P_u);
+
+        if (ctr_inwhile < 1) {continue;}
+
+        auto neighbors = unlock_adjacency_vertexes(this->D_key[P_u], sub_keys, ctr_inwhile);
+
+        for (auto each : neighbors)
         {
-            return;
-        }
+            string& P_v_i = std::get<0>(each);
+            string& F_1_vi = std::get<1>(each);
+            mpz_class& e_i = std::get<2>(each);
 
-        // Look up P(u) and get all of T_i
-        Constrain con;
-        size_t ctr_inwhile=0;
-
-#ifdef SEC_GDB_SIMPLE_MODE
-
-        V_ITEM F_2_u_ctr = g_client.get_Dpv().at(P_u);
-        ctr_inwhile =  F_2_u_ctr.ctr;
-        if (ctr_inwhile != 0)
-        {
-            ggm_find_best_range_cover(&ggm, (char*)F_2_u_ctr.master_key.c_str(), 0, ctr_inwhile - 1, &con);
-        }
-        
-#else
-#endif
-        
-        if (ctr_inwhile != 0)
-        {
-            Subkeys sub_key_inwhile;
-            ggm_derive(&ggm, &con, &sub_key_inwhile);
-
-            string &F_1_u = this->D_key[P_u];
-            
-            for (size_t i = 0; i < ctr_inwhile; i++)
+            this->sever_graph.add_edge(P_u, P_v_i, e_i);
+            if (accessed_vertces.find(P_v_i) == accessed_vertces.end())
             {
-                unsigned char UT_i[KEY_SIZE];
-                unsigned char mask[KEY_SIZE];
-                H_1((unsigned char*)F_1_u.c_str(), KEY_SIZE, (unsigned char*)sub_key_inwhile.keys[i], KEY_SIZE, UT_i);
-
-                H_2((unsigned char*)F_1_u.c_str(), KEY_SIZE, (unsigned char*)sub_key_inwhile.keys[i], KEY_SIZE, mask);
-                
-                if (this->D_e.find(string((char*)UT_i, KEY_SIZE)) == this->D_e.end())
-                {
-                    cout << "??????????\n";
-                }
-                string &masked_ciph_i = this->D_e[string((char*)UT_i, KEY_SIZE)];
-
-                unsigned char ciph_i[masked_ciph_i.length()];
-
-                masking(masked_ciph_i.c_str(), masked_ciph_i.length(), mask, sizeof(mask), ciph_i);
-
-                string P_v_i = string((char *)ciph_i, KEY_SIZE);
-                string F_1_vi = string((char *)(ciph_i + KEY_SIZE), KEY_SIZE);
-                string str_e_i = string((char *)(ciph_i + 2 * KEY_SIZE), sizeof(ciph_i) - 2 * KEY_SIZE);
-                mpz_class e_i;
-                set_mpz_raw(e_i.get_mpz_t(), str_e_i.size(), str_e_i.c_str());
-
-                this->sever_graph.add_edge(P_u, P_v_i, e_i);
-                if (accesed_vertecies.find(P_v_i) == accesed_vertecies.end())
-                {
-                    q.push(P_v_i);
-                    this->D_key[P_v_i] = F_1_vi;
-                }
+                q.push(P_v_i);
+                this->D_key[P_v_i] = F_1_vi;
             }
-
-            ggm_free_constrain(&con);
-            ggm_free_keys(&sub_key_inwhile);
         }
+        ggm_free_keys(&sub_keys);
     }
 }
 
@@ -458,28 +455,13 @@ mpz_class Server::query_dist(std::string &F_1_s, std::string &P_s, std::string &
     GGM ggm = {KEY_SIZE, MAX_GGM_DEPTH};
     Subkeys sub_keys;
     ggm_derive(&ggm, &constrained_key, &sub_keys);
+    auto neighbors = unlock_adjacency_vertexes(F_1_s, sub_keys, ctr);
 
-    for (size_t i = 0; i < ctr; i++)
+    for (auto each : neighbors)
     {
-        unsigned char UT_i[KEY_SIZE] = {0};
-        unsigned char mask[KEY_SIZE] = {0};
-
-        H_1((unsigned char*)F_1_s.c_str(), KEY_SIZE, (unsigned char*)sub_keys.keys[i], KEY_SIZE, UT_i);
-
-        H_2((unsigned char*)F_1_s.c_str(), KEY_SIZE, (unsigned char*)sub_keys.keys[i], KEY_SIZE, mask);
-
-        string& masked_ciph_i = this->D_e[string((char*)UT_i, KEY_SIZE)];
-
-        unsigned char ciph_i[masked_ciph_i.length()];
-
-        masking(masked_ciph_i.c_str(), masked_ciph_i.length(), mask, sizeof(mask), ciph_i);
-
-        string P_v_i = string((char*)ciph_i, KEY_SIZE);
-        string F_1_vi = string((char*)(ciph_i + KEY_SIZE), KEY_SIZE);
-
-        string str_e_i = string((char*)(ciph_i + 2 * KEY_SIZE), sizeof(ciph_i) - 2 * KEY_SIZE);
-        mpz_class e_i;
-        set_mpz_raw(e_i.get_mpz_t(), str_e_i.size(), str_e_i.c_str());
+        string& P_v_i = std::get<0>(each);
+        string& F_1_vi = std::get<1>(each);
+        mpz_class& e_i = std::get<2>(each);
 
         this->path[P_v_i] = PATH_ITEM{P_s, e_i};
         this->xi[P_v_i] = e_i;
@@ -489,9 +471,7 @@ mpz_class Server::query_dist(std::string &F_1_s, std::string &P_s, std::string &
     }
 
     ggm_free_keys(&sub_keys);
-    g_s_ttt = 0;
-    g_s_cccddd = 0;
-    g_s_total_cnttt = ctr;
+
     while(!fh.empty())
     {
         HEAP_ITEM hi = fh.top();
@@ -506,80 +486,49 @@ mpz_class Server::query_dist(std::string &F_1_s, std::string &P_s, std::string &
             g_s_cache_size += 2 * KEY_SIZE + tmp.size();
             return xi[P_u];
         }
-        size_t ctr_inwhile = 0;
-        Constrain con;
-#ifdef SEC_GDB_SIMPLE_MODE
 
-        V_ITEM F_2_u_ctr = g_client.get_Dpv().at(P_u);
-        ctr_inwhile =  F_2_u_ctr.ctr;
-        if (ctr_inwhile != 0)
-        {
-            ggm_find_best_range_cover(&ggm, (char*)F_2_u_ctr.master_key.c_str(), 0, ctr_inwhile - 1, &con);
-        }
-        
-#else
-#endif
-        g_s_total_cnttt += ctr_inwhile;
-        if (ctr_inwhile != 0)
-        {
-            Subkeys sub_key_inwhile;
-            ggm_derive(&ggm, &con, &sub_key_inwhile);
+        Subkeys sub_keys;
+        int ctr_inwhile = contact_and_get_ggm_sub_key(ggm, sub_keys, P_u);
 
-            string &F_1_u = D_key[P_u];
-            
-            for (size_t i = 0; i < ctr_inwhile; i++)
+        if (ctr_inwhile < 1) {continue;}
+
+        auto neighbors = unlock_adjacency_vertexes(this->D_key[P_u], sub_keys, ctr_inwhile);
+
+        for (auto each : neighbors)
+        {
+            string& P_v_i = std::get<0>(each);
+            string& F_1_vi = std::get<1>(each);
+            mpz_class& e_i = std::get<2>(each);
+
+            // If cannot find P_v_i in xi, the latter condition may cause error.
+            // Also the first condition checks whether P_v_i is accessed.
+            // if (xi.find(P_v_i) == xi.end() || xi[P_u] + e_i < xi[P_v_i]) 
+            mpz_class tmp(JL_homo_add(this->pk, xi[P_u], e_i));
+            if (xi.find(P_v_i) == xi.end() || secure_compare_less(this->pk, tmp, xi[P_v_i])) 
             {
-                unsigned char UT_i[KEY_SIZE];
-                unsigned char mask[KEY_SIZE];
-                H_1((unsigned char*)F_1_u.c_str(), KEY_SIZE, (unsigned char*)sub_key_inwhile.keys[i], KEY_SIZE, UT_i);
-
-                H_2((unsigned char*)F_1_u.c_str(), KEY_SIZE, (unsigned char*)sub_key_inwhile.keys[i], KEY_SIZE, mask);
-                
-                string &masked_ciph_i = this->D_e[string((char*)UT_i, KEY_SIZE)];
-
-                unsigned char ciph_i[masked_ciph_i.length()];
-
-                masking(masked_ciph_i.c_str(), masked_ciph_i.length(), mask, sizeof(mask), ciph_i);
-
-                string P_v_i = string((char *)ciph_i, KEY_SIZE);
-                string F_1_vi = string((char *)(ciph_i + KEY_SIZE), KEY_SIZE);
-                string str_e_i = string((char *)(ciph_i + 2 * KEY_SIZE), sizeof(ciph_i) - 2 * KEY_SIZE);
-                mpz_class e_i;
-                set_mpz_raw(e_i.get_mpz_t(), str_e_i.size(), str_e_i.c_str());
-                
-                // If cannot find P_v_i in xi, the latter condition may cause error.
-                // Also the first condition checks whether P_v_i is accessed.
-                // if (xi.find(P_v_i) == xi.end() || xi[P_u] + e_i < xi[P_v_i]) 
-                mpz_class tmp(JL_homo_add(this->pk, xi[P_u], e_i));
-                if (xi.find(P_v_i) == xi.end() || secure_compare_less(this->pk, tmp, xi[P_v_i])) 
-                {
-                    xi[P_v_i] = tmp;
-                    path[P_v_i] = PATH_ITEM{P_u, e_i};
-                }
-
-                if (heap_handlers.find(P_v_i) == heap_handlers.end())
-                {
-                    FIBO_HEAP::handle_type handler = fh.push(HEAP_ITEM{P_v_i, xi[P_v_i]});
-                    heap_handlers[P_v_i] = handler;
-                }
-                else
-                {
-                    // Check if the P_v_i has been chosen, namely the distance of 
-                    // P_v_i is shortest.
-                    if (chosen_vertices.find(P_v_i) == chosen_vertices.end()) 
-                    {
-                        fh.update(heap_handlers[P_v_i], HEAP_ITEM{P_v_i, xi[P_v_i]});
-                    }
-                }
-
-                D_key[P_v_i] = F_1_vi;
-                g_s_cccddd ++;
+                xi[P_v_i] = tmp;
+                path[P_v_i] = PATH_ITEM{P_u, e_i};
             }
-            
-            ggm_free_keys(&sub_key_inwhile);
-            ggm_free_constrain(&con);
+
+            if (heap_handlers.find(P_v_i) == heap_handlers.end())
+            {
+                FIBO_HEAP::handle_type handler = fh.push(HEAP_ITEM{P_v_i, xi[P_v_i]});
+                heap_handlers[P_v_i] = handler;
+            }
+            else
+            {
+                // Check if the P_v_i has been chosen, namely the distance of 
+                // P_v_i is shortest.
+                if (chosen_vertices.find(P_v_i) == chosen_vertices.end()) 
+                {
+                    fh.update(heap_handlers[P_v_i], HEAP_ITEM{P_v_i, xi[P_v_i]});
+                }
+            }
+
+            D_key[P_v_i] = F_1_vi;
         }
-        g_s_ttt++;
+
+        ggm_free_keys(&sub_keys);
     }
     this->cache.emplace(cache_tmp, c_qd);
     string tmp = let_mpz_raw_to_str(c_qd.get_mpz_t());
@@ -587,24 +536,6 @@ mpz_class Server::query_dist(std::string &F_1_s, std::string &P_s, std::string &
     return c_qd;
 }
 
-
-int contact_and_get_ggm_sub_key(GGM& ggm, Subkeys& sub_key, string P_t)
-{
-    int ctr = 0;
-# ifdef SEC_GDB_SIMPLE_MODE
-    Constrain con;
-    V_ITEM F_2_u_ctr = g_client.get_Dpv().at(P_t);
-    ctr = F_2_u_ctr.ctr;
-    if (ctr != 0)
-    {
-        ggm_find_best_range_cover(&ggm, (char*)F_2_u_ctr.master_key.c_str(), 0, ctr-1, &con);
-        ggm_derive(&ggm, &con, &sub_key);
-    }
-#else
-    // connect with proxy and eval.
-#endif
-    return ctr;
-}
 
 void normalize_graph_outedge_weight(tuple<Graph<mpz_class>, Graph<mpz_class>>& double_graph, Server& server)
 {
@@ -631,40 +562,6 @@ void normalize_graph_outedge_weight(tuple<Graph<mpz_class>, Graph<mpz_class>>& d
             reverse_graph.modify_edge(eit->dest.name, eit->src.name, new_weight);
         }
     }
-}
-
-void Server::recover_masked_edge_info(u_char* F_1_u, u_char* sub_key, string& P_v, string& F_1_v, mpz_class& ei)
-{
-    u_char UT_i[KEY_SIZE];
-    u_char mask[KEY_SIZE];
-
-    H_1(F_1_u, KEY_SIZE, sub_key, KEY_SIZE, UT_i);
-    H_2(F_1_u, KEY_SIZE, sub_key, KEY_SIZE, mask);
-
-    string UT_i_str((char*)UT_i, KEY_SIZE);
-    assert(this->D_e.find(UT_i_str) != this->D_e.end());
-    
-    string& masked_ciph = this->D_e[UT_i_str];
-    u_char ciph_i[masked_ciph.size()];
-    masking(masked_ciph.c_str(), masked_ciph.length(), mask, sizeof(mask), ciph_i);
-
-    P_v = string((char*)ciph_i, KEY_SIZE);
-    F_1_v = string((char*)(ciph_i + KEY_SIZE), KEY_SIZE);
-    set_mpz_raw(ei.get_mpz_t(), sizeof(ciph_i) - 2 * KEY_SIZE, ciph_i + 2 * KEY_SIZE);
-}
-
-vector<tuple<string, string, mpz_class>> Server::unlock_adjacency_vertexes(string& F_1_u, Subkeys& sub_keys, int ctr)
-{
-    vector<tuple<string, string, mpz_class>> rtn;
-    u_char* F_1_u_char = (u_char*)F_1_u.c_str();
-    for (int i = 0; i < ctr; i ++)
-    {
-        string P_vi, F_1_vi;
-        mpz_class ei;
-        recover_masked_edge_info(F_1_u_char, (u_char*)sub_keys.keys[i], P_vi, F_1_vi, ei);
-        rtn.push_back(std::make_tuple(P_vi, F_1_vi, ei));
-    }
-    return rtn;
 }
 
 void Server::unlock_graph(tuple<Graph<mpz_class>, Graph<mpz_class>>& double_graph, string& F_1_s, string& P_s, Constrain& constrained_key, size_t ctr)
@@ -716,7 +613,8 @@ void Server::unlock_graph(tuple<Graph<mpz_class>, Graph<mpz_class>>& double_grap
             }
             graph.add_edge(P_u, P_v, ei);
             reverse_graph.add_edge(P_v, P_u, ei);
-        }       
+        }
+        ggm_free_keys(&sub_keys);
     }
 }
 
@@ -756,8 +654,10 @@ void Server::page_rank(std::string &F_1_s, std::string &P_s, Constrain &constrai
     }
 }
 
-
-
+Server::Server(): D_e(), pk(), level(), D_key(), xi(), path(), sever_graph(), zero(), cache()
+{
+    JL_encryption(this->pk, 0, this->zero);
+}
 Server::Server(const unordered_map<string, string> &de, const PK &pk) : D_e(de), pk(pk), level(), D_key(), xi(), path(), sever_graph(), zero(), cache()
 {
     JL_encryption(this->pk, 0, this->zero);

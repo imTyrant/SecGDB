@@ -17,8 +17,12 @@
 #include "client.hpp"
 #include "sec_compare.hpp"
 
+/* =========================================  */
 extern size_t g_fh_compare_time;
+extern size_t g_s_use_cache;
+extern size_t g_s_cache_size;
 
+/* =========================================  */
 typedef struct _ENC_E_ITEM
 {
     std::string s;
@@ -103,6 +107,7 @@ namespace std
 
 typedef boost::heap::fibonacci_heap<HEAP_ITEM, boost::heap::compare<heap_item_compare>> FIBO_HEAP;
 
+/* =========================================  */
 class Server
 {
   private:
@@ -134,7 +139,7 @@ class Server
 
 
     // simplify functions
-    void recover_masked_edge_info(u_char* F_1_u, u_char* sub_key, string& P_v, string& F_1_v, mpz_class& ei);
+    void recover_masked_edge_info(u_char* F_1_u, u_char* sub_key, std::string& P_v, std::string& F_1_v, mpz_class& ei);
     std::vector<std::tuple<std::string, std::string, mpz_class>> unlock_adjacency_vertexes(std::string& F_1_u, Subkeys& sub_keys, int ctr);
 
   public:
@@ -143,6 +148,11 @@ class Server
     ~Server();
 
     inline const PK &get_pk() const { return pk; }
+    inline void set_params(const std::unordered_map<std::string, std::string> &de, const PK &pk)
+    {
+        this->D_e = de;
+        this->pk = pk;
+    }
 
     void build_server_graph(std::string &F_1_s, std::string &P_s, std::string &P_t, Constrain &constrained_key, size_t ctr);
     bool set_level(std::string &F_1_s, std::string &P_s, std::string &P_t, Constrain &constrained_key, size_t ctr);
@@ -152,12 +162,5 @@ class Server
     void page_rank(std::string &F_1_s, std::string &P_s, Constrain &constrained_key, size_t ctr , int epochs);
     void unlock_graph(std::tuple<Graph<mpz_class>, Graph<mpz_class>>& double_graph, std::string& F_1_s, std::string& P_s, Constrain& constrained_key, size_t ctr);
 };
-
-extern int g_s_ttt;
-extern int g_s_cccddd;
-extern int g_s_total_cnttt;
-
-extern size_t g_s_use_cache;
-extern size_t g_s_cache_size;
 
 #endif

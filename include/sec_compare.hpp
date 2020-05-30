@@ -7,6 +7,10 @@
 #define TIME_INTERVAL 5000
 #define RETRY_TIME 100
 
+#define SC_GREATER 1 // left > right
+#define SC_LESS -1 // left < right
+#define SC_EQUAL 0 // left == right
+
 int secure_compare(PK& pk, mpz_class &left, mpz_class &right);
 
 bool secure_compare_greater(PK& pk, mpz_class &left, mpz_class &right);

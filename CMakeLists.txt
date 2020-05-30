@@ -10,24 +10,29 @@ option(
     "Using 128-bits secruity level "
     ON
 )
-if ("${SL_128}")
+if (SL_128)
     add_definitions(-DSECURITY_LEVEL_128)
 else()
     # add_definitions(-DSECURITY_LEVEL_256)
 endif()
 
-# specify simple mode
+# local proxy
+option(USING_LOCAL_PROXY "Prepare a local proxy" OFF)
+if (USING_LOCAL_PROXY)
+    add_definitions(-DSEC_GDB_LOCAL_PROXY)
+endif()
+
+# specify simple mode (local grable socket)
 option(SIMPLE_MODE "Enable simple model" OFF)
-if (${SIMPLE_MODE} EQUAL ON)
+if (SIMPLE_MODE)
     add_definitions(-DSEC_GDB_SIMPLE_MODE)
 endif()
 
 # encrypt graph or not
 option(NO_ENCRYPTION "Not encrypt graph" OFF)
-if (${NO_ENCRYPTION} EQUAL ON)
+if (NO_ENCRYPTION)
     add_definitions(-DSEC_GDB_WITHOUT_ENCRYPTION)
 endif()
-
 
 
 # import labhe
@@ -55,6 +60,6 @@ add_subdirectory (oc)
 add_subdirectory (test)
 
 # build main
-add_executable(main main.cpp client.cpp server.cpp)
+add_executable(main main.cpp client.cpp server.cpp proxy.cpp)
 # link
 target_link_libraries(main utils oc ${LABHE_LIB} ${OBLIVC_LIB} pthread gcrypt gmpxx gmp crypto)
