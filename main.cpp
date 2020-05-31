@@ -78,14 +78,18 @@ void enc_graph(cxxopts::ParseResult& args)
     client.enc_graph(args["input"].as<string>());
     auto enc_end = chrono::high_resolution_clock::now();
 
-    client.store_dcv((outdir.remove_trailing_separator() / "dcv.bin").string());
-    client.store_de((outdir.remove_trailing_separator() / "de.bin").string());
-    client.store_dpv((outdir.remove_trailing_separator() / "dpv.bin").string());
+    save_pk((outdir.remove_trailing_separator() / "pk.json"), client.get_pk());
+    save_sk((outdir.remove_trailing_separator() / "sk.json"), client.get_sk());
+
+    save_Dv((outdir.remove_trailing_separator() / "dcv.bin"), client.get_Dcv());
+    save_Dv((outdir.remove_trailing_separator() / "dpv.bin"), client.get_Dpv());
+    save_De((outdir.remove_trailing_separator() / "de.bin"), client.get_De());
 }
 
 /* Experiments regester. */
 unordered_map<string, void (*) (cxxopts::ParseResult&)> Experiments({
     {"simple_test", simple_test},
+    {"enc_graph", enc_graph}
 });
 
 /* Main */

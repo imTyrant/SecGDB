@@ -66,6 +66,8 @@ class Client
     inline const std::unordered_map<std::string, std::string> &get_De() const { return this->D_e; }
 
     inline const std::unordered_map<std::string, V_ITEM> &get_Dpv() const { return this->D_pv; }
+    
+    inline const std::unordered_map<std::string, V_ITEM> &get_Dcv() const { return this->D_cv; }
 };
 
 #ifdef SEC_GDB_SIMPLE_MODE
