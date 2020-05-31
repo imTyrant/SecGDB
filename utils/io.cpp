@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <cstdio>
 #include <gmp.h>
 #include <gmpxx.h>
 #include <boost/filesystem.hpp>
@@ -16,6 +17,29 @@ using namespace std;
 namespace fs = boost::filesystem;
 
 using json = nlohmann::json;
+
+string raw_to_hex(const string& raw)
+{
+    int n = raw.size();
+    char buff[2 * n + 1];
+    const unsigned char* tmp = reinterpret_cast<const unsigned char*>(raw.c_str());
+    for (int i = 0; i < n; i ++)
+    {
+        sprintf(buff + 2 * i, "%02x", tmp[i]);
+    }
+    return string(buff);
+}
+
+string hex_to_raw(const string& hex)
+{
+    int n = hex.size();
+    unsigned char buff[n / 2];
+    for (int i = 0; i < n; i += 2)
+    {
+        sscanf((hex.c_str() + i), "%2hhx", &buff[i/2]);
+    }
+    return string((char*)buff, n / 2);
+}
 
 void check_create(const fs::path& p)
 {
@@ -53,9 +77,9 @@ bool save_sk(const fs::path& p, const SK& sk)
     json j;
     j["jl_sk"]["p"] = sk.jl_sk.p.get_str();
     j["jl_sk"]["pm12k"] = sk.jl_sk.pm12k.get_str();
-    j["k_1"] = sk.k_1;
-    j["k_2"] = sk.k_2;
-    j["k_3"] = sk.k_3;
+    j["k_1"] = raw_to_hex(sk.k_1);
+    j["k_2"] = raw_to_hex(sk.k_2);
+    j["k_3"] = raw_to_hex(sk.k_3);
     os << j.dump() << endl;
     os.close();
     return true;
@@ -95,9 +119,9 @@ bool load_sk(const fs::path& p, SK& sk)
 
     sk.jl_sk.p = mpz_class(j["jl_sk"]["p"].get<string>(), 10);
     sk.jl_sk.pm12k = mpz_class(j["jl_sk"]["pm12k"].get<string>(), 10);
-    sk.k_1 = j["k1"].get<string>();
-    sk.k_2 = j["k2"].get<string>();
-    sk.k_3 = j["k3"].get<string>();
+    sk.k_1 = hex_to_raw(j["k1"].get<string>());
+    sk.k_2 = hex_to_raw(j["k2"].get<string>());
+    sk.k_3 = hex_to_raw(j["k3"].get<string>());
     
     is.close();
     return true;
