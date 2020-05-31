@@ -7,6 +7,7 @@
 #include <queue>
 #include <tuple>
 #include <boost/heap/fibonacci_heap.hpp>
+#include <boost/asio.hpp>
 #include <cassert>
 
 #include "server.hpp"
@@ -15,7 +16,7 @@
 #include "crypto_stuff.hpp"
 #include "data_structures.hpp"
 #include "network.hpp"
-
+#include "exceptions.hpp"
 #include "mpc.hpp"
 
 #ifdef SEC_GDB_SIMPLE_MODE
@@ -26,7 +27,36 @@ using namespace std;
 
 bool Server::compare(const mpz_class& left, const mpz_class& right, int mode) const
 {
-    return mode == secure_compare(const_cast<ProtocolDesc&>(this->pd), const_cast<JL_PK&>(this->pk.jl_pk), const_cast<mpz_class&>(left), const_cast<mpz_class&>(right));
+    bool rtn;
+    try
+    {
+        rtn = (mode == secure_compare(const_cast<ProtocolDesc&>(this->pd), const_cast<JL_PK&>(this->pk.jl_pk), 
+                        const_cast<mpz_class&>(left), const_cast<mpz_class&>(right), const_cast<boost::asio::ip::tcp::socket&>(this->sock)));
+    }
+    catch (const sec_gdb_network_exception& e)
+    {
+        std::cerr << "Secure compare local communication failed!\n"
+                <<  "Error: " << e.get_msg() << " Error code: " << e.get_ec() << endl;
+        throw sec_gdb_global_exception("Server fails to execute secure comparsion!");
+    }
+    
+    return rtn;
+}
+
+mpz_class Server::multiply(mpz_class& left, mpz_class& right)
+{
+    mpz_class result;
+    try
+    {
+        result = secure_multiply(this->pk.jl_pk, left, right, sock);
+    }
+    catch(const sec_gdb_network_exception& e)
+    {
+        std::cerr << "Secure multiply local communication failed!\n"
+                <<  "Error: " << e.get_msg() << " Error code: " << e.get_ec() << endl;
+        throw sec_gdb_global_exception("Server fails to execute secure multiplication!");
+    }
+    return result;
 }
 
 int Server::contact_and_get_ggm_sub_key(GGM& ggm, Subkeys& sub_key, string& P_t)
@@ -34,7 +64,7 @@ int Server::contact_and_get_ggm_sub_key(GGM& ggm, Subkeys& sub_key, string& P_t)
     int ctr = 0;
 
 #ifdef SEC_GDB_SIMPLE_MODE
-    auto result = g_proxy.look_up(P_t);
+    auto result = look_up(g_proxy, P_t);
     Constrain& con = std::get<0>(result);
     ctr = std::get<1>(result);
     if (ctr != 0)
@@ -43,7 +73,22 @@ int Server::contact_and_get_ggm_sub_key(GGM& ggm, Subkeys& sub_key, string& P_t)
     }
     ggm_free_constrain(&con);
 #else
-    // connect with proxy and eval.
+    try
+    {
+        Constrain con;
+        net_recv_constrain(this->sock, ggm, con, ctr);
+        if (ctr != 0)
+        {
+            ggm_derive(&ggm, &con, &sub_key);
+        }
+        ggm_free_constrain(&con);
+    }
+    catch(const sec_gdb_network_exception& e)
+    {
+        std::cerr << "Receiving Constrain occurs error!\n"
+            << "Error: " << e.get_msg() << " Error code: " << e.get_ec() << endl;
+        throw sec_gdb_global_exception("Server fails to derive sub key!");
+    }
 #endif
     return ctr;
 }
@@ -466,18 +511,35 @@ void Server::page_rank(std::string &F_1_s, std::string &P_s, Constrain &constrai
     }
 }
 
-Server::Server()
-    : D_e(), pk(), level(), D_key(), xi(), path(), sever_graph(), zero(), cache(), pd()
+void Server::network_init()
 {
-    JL_encryption(this->pk, 0, this->zero);
+    this->sock.connect(proxy_info);
 }
-Server::Server(const unordered_map<string, string> &de, const PK &pk)
-    : D_e(de), pk(pk), level(), D_key(), xi(), path(), sever_graph(), zero(), cache(), pd()
+
+void Server::oblivc_init()
+{
+    protocolUseTcp2PKeepAlive(&(this->pd), this->sock.native_handle(), true);
+}
+
+Server::Server(boost::asio::ip::tcp::socket& sock, boost::asio::ip::tcp::endpoint& proxy_info)
+    : D_e(), pk(), level(), D_key(), xi(), path(), sever_graph(),
+        zero(), cache(), pd({0}), sock(std::move(sock)), proxy_info(proxy_info)
 {
     JL_encryption(this->pk, 0, this->zero);
+    network_init();
+    oblivc_init();
+}
+Server::Server(const unordered_map<string, string> &de, const PK &pk, boost::asio::ip::tcp::socket& sock, boost::asio::ip::tcp::endpoint& proxy_info)
+    : D_e(de), pk(pk), level(), D_key(), xi(), path(), sever_graph(),
+        zero(), cache(), pd({0}), sock(std::move(sock)), proxy_info(proxy_info)
+{
+    JL_encryption(this->pk, 0, this->zero);
+    network_init();
+    oblivc_init();
 }
 
 Server::~Server()
 {
     cleanupProtocol(&pd);
+    sock.close();
 }

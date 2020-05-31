@@ -34,7 +34,6 @@ if (NO_ENCRYPTION MATCHES ON)
     add_definitions(-DSEC_GDB_WITHOUT_ENCRYPTION)
 endif()
 
-
 # import labhe
 set(LABHE_DIR ${PROJECT_SOURCE_DIR}/depends/labhe)
 include_directories(${LABHE_DIR}/include)
@@ -62,4 +61,4 @@ add_subdirectory (test)
 # build main
 add_executable(main main.cpp client.cpp server.cpp proxy.cpp)
 # link
-target_link_libraries(main utils oc ${LABHE_LIB} ${OBLIVC_LIB} pthread gcrypt gmpxx gmp crypto)
+target_link_libraries(main utils oc ${LABHE_LIB} ${OBLIVC_LIB} pthread gcrypt gmpxx gmp crypto boost_system boost_filesystem)

@@ -8,6 +8,7 @@
 #include "mpc.hpp"
 #include "crypto_stuff.hpp"
 #include "network.hpp"
+#include "exceptions.hpp"
 
 extern "C"
 {
@@ -57,16 +58,9 @@ void gen_random(mpz_class &r_left, mpz_class &r_right, int size)
 void secure_compare_remote(ProtocolDesc& pd, JL_PK& pk, JL_SK& sk, tcp::socket& sock)
 {
     mpz_class left, right, unblinded_left, unblinded_right;
-    if (!net_recv_mpz_class(sock, left)) 
-    {
-        cout << "Secure compare remote receiving left value error." << endl;
-        return; 
-    }
-    if (!net_recv_mpz_class(sock, right))
-    {
-        cout << "Secure compare remote receiving right value error." << endl;
-        return; 
-    }
+    net_recv_mpz_class(sock, left);
+    net_recv_mpz_class(sock, right);
+
     JL_decryption(sk, pk, left, unblinded_left);
     JL_decryption(sk, pk, right, unblinded_right);
 
@@ -100,16 +94,8 @@ int secure_compare(ProtocolDesc& pd, JL_PK& jl_pk, mpz_class& left, mpz_class& r
     mpz_class blinded_right = JL_homo_add(jl_pk, right, r_right_enc);
 
     // Send data through socket
-    if (!net_send_mpz_class(sock, blinded_left))
-    {
-        cout << "Secure compare sends blinded left value error" << endl;
-        return;
-    };
-    if (!net_send_mpz_class(sock, blinded_right))
-    {
-        cout << "Secure compare sends blinded right value error" << endl;
-        return;
-    }
+    net_send_mpz_class(sock, blinded_left);
+    net_send_mpz_class(sock, blinded_right);
 
     OBLIVC_IO io;
     io.r_1 = r_left.get_si();

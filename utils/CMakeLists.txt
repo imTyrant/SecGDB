@@ -3,4 +3,6 @@ add_library (utils
     ggm.c
     graph.cpp
     mpc.cpp
+    network.cpp
+    io.cpp
 )

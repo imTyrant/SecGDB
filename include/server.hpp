@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <list>
 #include <boost/heap/fibonacci_heap.hpp>
+#include <boost/asio.hpp>
 
 extern "C"
 {
@@ -113,6 +114,10 @@ private:
     // Struct for obliv-c
     ProtocolDesc pd;
 
+    // Boost Asio
+    boost::asio::ip::tcp::socket sock;
+    boost::asio::ip::tcp::endpoint proxy_info;
+
     // The D_e as same as the one in client.
     std::unordered_map<std::string, std::string> D_e;
 
@@ -138,6 +143,12 @@ private:
 
 
     /* Private functions */
+    // Prepare network stuff
+    void network_init();
+
+    // Prepare obliv-c stuff
+    void oblivc_init();
+
     // Unlock an edge
     void recover_masked_edge_info(u_char* F_1_u, u_char* sub_key, std::string& P_v, std::string& F_1_v, mpz_class& ei);
 
@@ -154,8 +165,8 @@ private:
     mpz_class multiply (mpz_class& left, mpz_class& right);
 
 public:
-    Server();
-    Server(const std::unordered_map<std::string, std::string> &de, const PK &pk);
+    Server(boost::asio::ip::tcp::socket& sock, boost::asio::ip::tcp::endpoint& proxy_info);
+    Server(const std::unordered_map<std::string, std::string> &de, const PK &pk, boost::asio::ip::tcp::socket& sock, boost::asio::ip::tcp::endpoint& proxy_info);
     ~Server();
 
     inline const PK &get_pk() const { return pk; }
