@@ -257,37 +257,53 @@ void JL_decryption(SK &sk, PK &pk, mpz_class &in, size_t* out)
     *out = tmp.get_ui();
 }
 
-mpz_class JL_homo_add(PK &pk, mpz_class &left, mpz_class &right)
+
+mpz_class JL_homo_add(const JL_PK& jl_pk, const mpz_class& left, const mpz_class& right)
 {
     mpz_class rtn;
 #ifdef SEC_GDB_WITHOUT_ENCRYPTION
     rtn = left + right;
 #else
-    bhjl_homadd(rtn.get_mpz_t(), left.get_mpz_t(), right.get_mpz_t(), pk.jl_pk.N.get_mpz_t());
+    bhjl_homadd(rtn.get_mpz_t(), left.get_mpz_t(), right.get_mpz_t(), jl_pk.N.get_mpz_t());
 #endif
     return rtn;
 }
 
-mpz_class JL_homo_sub(PK &pk, mpz_class &left, mpz_class &right)
+mpz_class JL_homo_add(const PK &pk, const mpz_class &left, const mpz_class &right)
+{
+    return JL_homo_add(pk.jl_pk, left, right);
+}
+
+mpz_class JL_homo_sub(const JL_PK &jl_pk, const mpz_class &left, const mpz_class &right)
 {
     mpz_class rtn;
 #ifdef SEC_GDB_WITHOUT_ENCRYPTION
     rtn = left - right;
 #else
-    bhjl_homsub(rtn.get_mpz_t(), left.get_mpz_t(), right.get_mpz_t(), pk.jl_pk.N.get_mpz_t());
+    bhjl_homsub(rtn.get_mpz_t(), left.get_mpz_t(), right.get_mpz_t(), jl_pk.N.get_mpz_t());
 #endif
     return rtn;
 }
 
-mpz_class JL_homo_mul(PK &pk, mpz_class &left, mpz_class &right)
+mpz_class JL_homo_sub(const PK &pk, const mpz_class &left, const mpz_class &right)
+{
+    return JL_homo_sub(pk.jl_pk, left, right);
+}
+
+mpz_class JL_homo_mul(const JL_PK &jl_pk, const mpz_class &left, const mpz_class &right)
 {
     mpz_class rtn;
 #ifdef SEC_GDB_WITHOUT_ENCRYPTION
     rtn = left * right;
 #else
-    bhjl_homsmul(rtn.get_mpz_t(), left.get_mpz_t(), right.get_mpz_t(), pk.jl_pk.N.get_mpz_t());
+    bhjl_homsmul(rtn.get_mpz_t(), left.get_mpz_t(), right.get_mpz_t(), jl_pk.N.get_mpz_t());
 #endif
     return rtn;
+}
+
+mpz_class JL_homo_mul(const PK &pk, const mpz_class &left, const mpz_class &right)
+{
+    return JL_homo_mul(pk.jl_pk, left, right);
 }
 
 /**

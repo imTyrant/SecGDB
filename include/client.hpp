@@ -70,9 +70,9 @@ class Client
 
 #ifdef SEC_GDB_SIMPLE_MODE
 extern Client g_client;
+#endif
 extern double g_c_update_clt;
 extern double g_c_update_srv;
 extern double g_c_update_prxy;
-#endif
 
 #endif

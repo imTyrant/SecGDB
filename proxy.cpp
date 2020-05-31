@@ -34,7 +34,7 @@ tuple<Constrain, size_t> Proxy::look_up(string& P_u)
 Proxy::Proxy()
     : D_pv(), pk(), jl_sk()
 {
-
+    
 }
 
 Proxy::Proxy(const unordered_map<string, V_ITEM>& D_pv, const PK& pk, const JL_SK& jl_sk)

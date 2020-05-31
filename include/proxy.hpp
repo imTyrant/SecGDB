@@ -11,6 +11,7 @@
 #include "crypto_stuff.hpp"
 #include "ggm.h"
 
+
 class Proxy
 {
 private:

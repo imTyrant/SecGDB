@@ -21,9 +21,7 @@
 #include "graph.hpp"
 #include "data_structures.hpp"
 
-#ifdef SEC_GDB_SIMPLE_MODE
-#include "sec_compare.hpp"
-#endif
+#include "mpc.hpp"
 
 using namespace std;
 /*
@@ -40,25 +38,25 @@ void log_memory(const void* ptr, size_t size)
 #ifdef SEC_GDB_SIMPLE_MODE
 Proxy g_proxy;
 Client g_client;
-// local compare
-size_t g_compare_counter = 0;
-double g_total_compare_time = 0.0;
-double g_total_wait_time = 0.0;
+#endif
+
 // locally update graph
 double g_c_update_clt = 0.0;
 double g_c_update_srv = 0.0;
 double g_c_update_prxy = 0.0;
-#endif
 
 size_t g_s_cache_size = 0;
 size_t g_s_use_cache = 0;
 size_t g_fh_compare_time = 0;
 
+size_t g_compare_counter = 0;
+double g_compare_time_cost = 0.0;
+
 void simple_test(cxxopts::ParseResult& args)
 {
 #ifdef SEC_GDB_SIMPLE_MODE
     g_client.enc_graph(args["input"].as<string>());
-    g_proxy.set_params(g_client.get_Dpv(), g_client.get_pk());
+    g_proxy.set_params(g_client.get_Dpv(), g_client.get_pk(), g_client.get_sk().jl_sk);
     Server server(g_client.get_De(), g_client.get_pk());
 #else
     cout << "Simple mode is not enable, quit." << endl;
@@ -83,8 +81,10 @@ int main(int argc, char *argv[])
         ("e,exp", "Name an experiment", cxxopts::value<string>())
         ("i,input", "Input graph file", cxxopts::value<string>())
         ("o,ouput", "Directory where data to be saved", cxxopts::value<string>())
-        ("party", "Specify current party", cxxopts::value<string>())
         ("l,log", "File for experiment results", cxxopts::value<string>()->default_value("./result.json"))
+        ("party", "Specify current party", cxxopts::value<string>())
+        ("a,address", "IP address for the proxy", cxxopts::value<string>()->default_value("127.0.0.1"))
+        ("p,port", "Port for the proxy", cxxopts::value<short>()->default_value("23333"))
         ("h,help", "Print usage")
         ;
     try

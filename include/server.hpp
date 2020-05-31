@@ -9,13 +9,16 @@
 #include <list>
 #include <boost/heap/fibonacci_heap.hpp>
 
+extern "C"
+{
+#include "obliv.h"
+}
+
 #include "global.h"
 #include "ggm.h"
 #include "crypto_stuff.hpp"
 #include "graph.hpp"
-
-#include "client.hpp"
-#include "sec_compare.hpp"
+#include "mpc.hpp"
 
 /* =========================================  */
 extern size_t g_fh_compare_time;
@@ -65,16 +68,6 @@ typedef struct _HEAP_ITEM
     mpz_class distance;
 } HEAP_ITEM;
 
-struct heap_item_compare
-{
-    bool operator()(const HEAP_ITEM& n1, const HEAP_ITEM& n2) const
-    {
-        g_fh_compare_time++;
-        return secure_compare_greater(g_client.get_pk(), const_cast<mpz_class&>(n1.distance),  const_cast<mpz_class&>(n2.distance));
-        // return n1.distance > n2.distance;
-    }
-};
-
 typedef struct _CACHE_ITEM
 {
     std::string src;
@@ -105,27 +98,33 @@ namespace std
     };
 };
 
-typedef boost::heap::fibonacci_heap<HEAP_ITEM, boost::heap::compare<heap_item_compare>> FIBO_HEAP;
-
+class FibHeapCompare;
 /* =========================================  */
 class Server
 {
-  private:
+private:
+    /* friend class */
+    friend FibHeapCompare;
+
+    /* Private parameters */
+    // Public keys of client
     PK pk;
-    
+
+    // Struct for obliv-c
+    ProtocolDesc pd;
+
     // The D_e as same as the one in client.
     std::unordered_map<std::string, std::string> D_e;
+
     // Stroe F_1_X keys for each P_X
     std::unordered_map<std::string, std::string> D_key;
 
     // Parameters used during find max flow.
     std::unordered_map<ENC_E_ITEM, mpz_class> cap_r;
-
     std::unordered_map<std::string, size_t> level;
 
     // Parameters used during find shortest distance.
     std::unordered_map<std::string, PATH_ITEM> path;
-
     std::unordered_map<std::string, mpz_class> xi;
 
     // Store an temporary graph in server with blinded vertex and encrypted weight.
@@ -138,11 +137,23 @@ class Server
     std::unordered_map<CACHE_ITEM, mpz_class> cache;
 
 
-    // simplify functions
+    /* Private functions */
+    // Unlock an edge
     void recover_masked_edge_info(u_char* F_1_u, u_char* sub_key, std::string& P_v, std::string& F_1_v, mpz_class& ei);
+
+    // Recover adjacency vertces of the chosen vertex
     std::vector<std::tuple<std::string, std::string, mpz_class>> unlock_adjacency_vertexes(std::string& F_1_u, Subkeys& sub_keys, int ctr);
 
-  public:
+    // Contact with proxy for getting sub keys of GGM
+    int contact_and_get_ggm_sub_key(GGM& ggm, Subkeys& sub_key, std::string& P_t);
+
+    // Contact with proxy for comparing two encryption value
+    bool compare(const mpz_class& left, const mpz_class& right, int mode) const;
+
+    // Contact with proxy for multiplying two encryption value
+    mpz_class multiply (mpz_class& left, mpz_class& right);
+
+public:
     Server();
     Server(const std::unordered_map<std::string, std::string> &de, const PK &pk);
     ~Server();
@@ -162,5 +173,22 @@ class Server
     void page_rank(std::string &F_1_s, std::string &P_s, Constrain &constrained_key, size_t ctr , int epochs);
     void unlock_graph(std::tuple<Graph<mpz_class>, Graph<mpz_class>>& double_graph, std::string& F_1_s, std::string& P_s, Constrain& constrained_key, size_t ctr);
 };
+
+/* =========================================  */
+class FibHeapCompare
+{
+private:
+    Server& server;
+public:
+    FibHeapCompare(Server& s): server(s) {}
+
+    bool operator()(const HEAP_ITEM& n1, const HEAP_ITEM& n2) const
+    {
+        g_fh_compare_time++;
+        return server.compare(n1.distance, n2.distance, COMPARE_HIGHER);
+    }
+};
+
+typedef boost::heap::fibonacci_heap<HEAP_ITEM, boost::heap::compare<FibHeapCompare>> FIBO_HEAP;
 
 #endif

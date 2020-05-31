@@ -1,36 +1,36 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 project(GraphShield)
 
 # configuration
 set (CMAKE_CXX_STANDARD 11)
 
 # specify security level
-option(
-    SL_128
-    "Using 128-bits secruity level "
-    ON
-)
-if (SL_128)
+option(SL_128 "Using 128-bits secruity level " ON)
+if (SL_128 MATCHES ON)
+    message("Security level is 128-bits")
     add_definitions(-DSECURITY_LEVEL_128)
 else()
     # add_definitions(-DSECURITY_LEVEL_256)
 endif()
 
 # local proxy
-option(USING_LOCAL_PROXY "Prepare a local proxy" OFF)
-if (USING_LOCAL_PROXY)
+option(USING_LOCAL_PROXY "Prepare a local proxy")
+if (USING_LOCAL_PROXY MATCHES ON)
+    message("Local Proxy mode is ${USING_LOCAL_PROXY}")
     add_definitions(-DSEC_GDB_LOCAL_PROXY)
 endif()
 
 # specify simple mode (local grable socket)
-option(SIMPLE_MODE "Enable simple model" OFF)
-if (SIMPLE_MODE)
+option(SIMPLE_MODE "Enable simple model")
+if (SIMPLE_MODE MATCHES ON)
+    message("Simple mode is ${SIMPLE_MODE}")
     add_definitions(-DSEC_GDB_SIMPLE_MODE)
 endif()
 
 # encrypt graph or not
-option(NO_ENCRYPTION "Not encrypt graph" OFF)
-if (NO_ENCRYPTION)
+option(NO_ENCRYPTION "Not encrypt graph")
+if (NO_ENCRYPTION MATCHES ON)
+    message("No encryption mode is ${NO_ENCRYPTION}")
     add_definitions(-DSEC_GDB_WITHOUT_ENCRYPTION)
 endif()
 
