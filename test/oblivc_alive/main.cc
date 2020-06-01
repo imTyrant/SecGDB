@@ -82,30 +82,34 @@ void server(const string& address, int port)
     io_service service;
     ip::tcp::acceptor acc(service, ip::tcp::endpoint(ip::tcp::v4(), (short)port));
     ip::tcp::socket socket(service);
-    acc.accept(socket);
-    cout << "Client connected.." << endl;
-    protocolUseTcp2PKeepAlive(&pd, socket.native_handle(), false);
-
-    int counter = 0;
-    while (1)
+    while(1)
     {
-        // int error = 0;
-        // socklen_t len_e = sizeof(error);
-        unsigned char a;
-        int code = recv(socket.native_handle(), &a, sizeof(a), MSG_PEEK);
-        cout << "Read code len " << code << endl;
-        if (code < 1) {break;}
-        input = {0};
-        input.a_1 = 19 + counter;
-        input.a_2 = 30;
-        cout << "a1 " << input.a_1 - 10 << " a2 " << input.a_2 - 20 << endl;
+        acc.accept(socket);
+        cout << "Client connected.." << endl;
+        protocolUseTcp2PKeepAlive(&pd, socket.native_handle(), false);
 
-        setCurrentParty(&pd, OBLIVC_PROXY);
-        execYaoProtocol(&pd, compare, &input);
-        cout << "Round " << counter++ << " Result:" << input.result << endl;
+        int counter = 0;
+        while (1)
+        {
+            // int error = 0;
+            // socklen_t len_e = sizeof(error);
+            unsigned char a;
+            int code = recv(socket.native_handle(), &a, sizeof(a), MSG_PEEK);
+            cout << "Read code len " << code << endl;
+            if (code < 1) {break;}
+            input = {0};
+            input.a_1 = 19 + counter;
+            input.a_2 = 30;
+            cout << "a1 " << input.a_1 - 10 << " a2 " << input.a_2 - 20 << endl;
+
+            setCurrentParty(&pd, OBLIVC_PROXY);
+            execYaoProtocol(&pd, compare, &input);
+            cout << "Round " << counter++ << " Result:" << input.result << endl;
+            boost::asio::read(socket, boost::asio::buffer(&code, sizeof(code)));
+        }
+        cleanupProtocol(&pd);
+        socket.close();
     }
-    cleanupProtocol(&pd);
-    socket.close();
     acc.close();    
     cout << "Quiting \n";
 
@@ -172,8 +176,8 @@ int main(int argc, char* argv[])
     cxxopts::Options options("Long Live Obliv-c");
     options.add_options()
         ("m,model", "client or server", cxxopts::value<string>())
-        ("a,address", "address", cxxopts::value<string>()->default_value("localhost"))
-        ("p,port", "port", cxxopts::value<int>()->default_value("7783"))
+        ("a,address", "address", cxxopts::value<string>()->default_value("12.0.0.1"))
+        ("p,port", "port", cxxopts::value<int>()->default_value("23333"))
         ;
 
     auto result = options.parse(argc, argv);

@@ -30,6 +30,7 @@ bool Server::compare(const mpz_class& left, const mpz_class& right, int mode) co
     bool rtn;
     try
     {
+        net_send_protocol_head(const_cast<boost::asio::ip::tcp::socket&>(this->sock), MPC_SECURE_COMPARSION);
         rtn = (mode == secure_compare(const_cast<ProtocolDesc&>(this->pd), const_cast<JL_PK&>(this->pk.jl_pk), 
                         const_cast<mpz_class&>(left), const_cast<mpz_class&>(right), const_cast<boost::asio::ip::tcp::socket&>(this->sock)));
     }
@@ -48,6 +49,7 @@ mpz_class Server::multiply(mpz_class& left, mpz_class& right)
     mpz_class result;
     try
     {
+        net_send_protocol_head(sock, MPC_SECURE_MULTIPLICATION);
         result = secure_multiply(this->pk.jl_pk, left, right, sock);
     }
     catch(const sec_gdb_network_exception& e)
@@ -76,6 +78,8 @@ int Server::contact_and_get_ggm_sub_key(GGM& ggm, Subkeys& sub_key, string& P_t)
     try
     {
         Constrain con;
+        net_send_protocol_head(sock, MPC_LOOK_UP);
+        net_send_sized_data(sock, P_t.size(), const_cast<char*>(P_t.c_str()));
         net_recv_constrain(this->sock, ggm, con, ctr);
         if (ctr != 0)
         {
@@ -518,7 +522,8 @@ void Server::network_init()
 
 void Server::oblivc_init()
 {
-    protocolUseTcp2PKeepAlive(&(this->pd), this->sock.native_handle(), true);
+    int skn = sock.native_handle();
+    protocolUseTcp2PKeepAlive(&pd, skn, true);
 }
 
 Server::Server(boost::asio::ip::tcp::socket& sock, boost::asio::ip::tcp::endpoint& proxy_info)

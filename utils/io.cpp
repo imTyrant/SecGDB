@@ -119,9 +119,9 @@ bool load_sk(const fs::path& p, SK& sk)
 
     sk.jl_sk.p = mpz_class(j["jl_sk"]["p"].get<string>(), 10);
     sk.jl_sk.pm12k = mpz_class(j["jl_sk"]["pm12k"].get<string>(), 10);
-    sk.k_1 = hex_to_raw(j["k1"].get<string>());
-    sk.k_2 = hex_to_raw(j["k2"].get<string>());
-    sk.k_3 = hex_to_raw(j["k3"].get<string>());
+    sk.k_1 = hex_to_raw(j["k_1"].get<string>());
+    sk.k_2 = hex_to_raw(j["k_2"].get<string>());
+    sk.k_3 = hex_to_raw(j["k_3"].get<string>());
     
     is.close();
     return true;

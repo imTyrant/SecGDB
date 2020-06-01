@@ -28,9 +28,9 @@ int net_recv_sized_data(tcp::socket& sock, char* &buff)
 
 bool net_send_sized_data(tcp::socket& sock, int size, char* buff)
 {
-    char* char_size = reinterpret_cast<char*>(size);
+    int bytes_num = size;
     boost::system::error_code ec;
-    boost::asio::write(sock, boost::asio::buffer(char_size, sizeof(int)), ec);
+    boost::asio::write(sock, boost::asio::buffer(reinterpret_cast<char*>(&bytes_num), sizeof(bytes_num)), ec);
     if (ec) { throw sec_gdb_network_exception("Writing data size failed!", ec.value()); }
     boost::asio::write(sock, boost::asio::buffer(buff, size), ec);
     if (ec) { throw sec_gdb_network_exception("Writing data failed!", ec.value()); }
@@ -45,6 +45,7 @@ bool net_recv_mpz_class(tcp::socket& sock, mpz_class& out)
         int size = net_recv_sized_data(sock, buff);
         set_mpz_raw(out.get_mpz_t(), size, buff);
         delete buff;
+        cout << "Receiving " << out.get_str() << endl;
     }
     catch (const sec_gdb_network_exception& e)
     {
@@ -63,6 +64,7 @@ bool net_send_mpz_class(tcp::socket& sock, mpz_class& in)
 {
     try
     {
+        cout << "Sending " << in.get_str() << endl;
         string container = let_mpz_raw_to_str(in.get_mpz_t());
         net_send_sized_data(sock, container.size(), (char*)container.c_str());
     }
@@ -158,6 +160,6 @@ char net_recv_protocol_head(tcp::socket& sock)
     PROTOCOL_HEAD_TYPE protocol;
     boost::system::error_code ec;
     boost::asio::read(sock, boost::asio::buffer(&protocol, sizeof(PROTOCOL_HEAD_TYPE)), ec);
-    if (ec) { throw sec_gdb_network_exception("Sending protocol head occurs error!", ec.value()); }
+    if (ec) { throw sec_gdb_network_exception("Receiving protocol head occurs error!", ec.value()); }
     return protocol;
 }

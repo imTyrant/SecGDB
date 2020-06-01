@@ -4,11 +4,13 @@
 #include <string>
 #include <gmpxx.h>
 #include <unordered_map>
+#include <utility>
 
 #include "global.h"
 #include "graph.hpp"
 #include "data_structures.hpp"
 #include "crypto_stuff.hpp"
+#include "io.hpp"
 
 class Client
 {
@@ -42,12 +44,17 @@ class Client
     Request give_request(std::string src, std::string dest);
     void update_graph(const std::string &src, const std::string &dest, const size_t weight, int op);
 
-    void store_sk();
-    void store_pk();
+    void store_sk(const std::string& filePath) const { if (!save_sk(filePath, this->sk)) { std::cerr << "Saving sk failed." << std::endl; } };
+    void read_sk(const std::string& filePath) { if (!load_sk(filePath, this->sk)) { std::cerr << "Loading sk failed." << std::endl; } };
+    void store_pk(const std::string& filePath) const { if (!save_pk(filePath, this->pk)) { std::cerr << "Saving pk failed." << std::endl; } };
+    void read_pk(const std::string& filePath) { if (!load_pk(filePath, this->pk)) { std::cerr << "Loading pk failed." << std::endl; } };
 
-    void store_dpv(const std::string &filePath);
-    void store_dcv(const std::string &filePath);
-    void store_de(const std::string &filePath);
+    void save_dpv(const std::string &filePath);
+    void load_dpv(const std::string &filePath);
+    void save_dcv(const std::string &filePath);
+    void load_dcv(const std::string &filePath);
+    void save_de(const std::string &filePath);
+    void load_de(const std::string &filePath);
 
     inline void clean_up()
     {
@@ -55,6 +62,12 @@ class Client
       this->D_cv.clear();
       this->D_pv.clear();
       this->D_e.clear();
+    }
+
+    inline void set_keys(const PK& pk, const SK& sk)
+    {
+      this->pk = pk;
+      this->sk = sk;
     }
 
     inline Graph<size_t>& get_graph() { return this->graph; }
@@ -65,9 +78,15 @@ class Client
 
     inline const std::unordered_map<std::string, std::string> &get_De() const { return this->D_e; }
 
+    inline void set_De(std::unordered_map<std::string, std::string> &&D_e) { this->D_e = std::forward<std::unordered_map<std::string, std::string>>(D_e); }
+
     inline const std::unordered_map<std::string, V_ITEM> &get_Dpv() const { return this->D_pv; }
+
+    inline void set_Dpv(std::unordered_map<std::string, V_ITEM> &&D_pv) { this->D_pv = std::forward<std::unordered_map<std::string, V_ITEM>>(D_pv); }
     
     inline const std::unordered_map<std::string, V_ITEM> &get_Dcv() const { return this->D_cv; }
+
+    inline void set_Dcv(std::unordered_map<std::string, V_ITEM> &&Dcv) { this->D_cv = std::forward<std::unordered_map<std::string, V_ITEM>>(D_cv); }
 };
 
 #ifdef SEC_GDB_SIMPLE_MODE

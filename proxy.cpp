@@ -97,22 +97,26 @@ tuple<Constrain, size_t> Proxy::lookup(string& P_u) const
 
 void Proxy::parse_request(ip::tcp::socket sock)
 {
+    cout << "Client connected" << endl;
     ProtocolDesc pd = {0};
     protocolUseTcp2PKeepAlive(&pd, sock.native_handle(), false);
     while(true)
     {
         try
         {
-            PROTOCOL_HEAD_TYPE protocol = MPC_EMPTY_PROTOCOL;
+            PROTOCOL_HEAD_TYPE protocol = net_recv_protocol_head(sock);
             switch (protocol)
             {
                 case MPC_SECURE_COMPARSION:
+                    cout << "Going to secure comparsion\n";
                     compare(sock, pd);
                     break;
                 case MPC_SECURE_MULTIPLICATION:
+                    cout << "Going to secure multiplication\n";
                     multiply(sock);
                     break;
                 case MPC_LOOK_UP:
+                    cout << "Going to lookup\n";
                     lookup_remote(sock);
                     break;
                 default:
@@ -133,14 +137,18 @@ void Proxy::parse_request(ip::tcp::socket sock)
     }
     cleanupProtocol(&pd);
     sock.close();
+    cout << "Client Quit" << endl;
 }
 
 void Proxy::accept()
 {
-    ip::tcp::socket sock(service);
     while(true)
     {
+        ip::tcp::socket sock(service);
+        cout << "Start listening\n";
         acceptor.accept(sock);
+        cout << "Client connected\n";
+        
         parse_request(std::move(sock));
         // std::thread(parse_request, std::move(sock)).detach();
     }

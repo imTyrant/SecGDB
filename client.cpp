@@ -18,55 +18,34 @@
 
 using namespace std;
 
-void Client::store_dcv(const string &filePath)
+void Client::load_dcv(const string &filePath)
 {
-    ofstream outfile(filePath, ios::out);
-    if (!outfile)
-    {
-        cout << "Cannot write dcv to file\n";
-        exit(EXIT_FAILURE);
-    }
-    for (auto it = this->D_cv.begin(); it != this->D_cv.end(); it++)
-    {
-        outfile << it->first << "\n";
-        outfile << it->second.ctr << "\n";
-        outfile << it->second.master_key << "\n\n";
-    }
-    outfile.close();
+    if(!load_Dv(filePath, this->D_cv)) {cerr << "Loading D_cv failed." << endl;};
 }
 
-void Client::store_dpv(const string &filePath)
+void Client::load_dpv(const string &filePath)
 {
-    ofstream outfile(filePath, ios::out);
-    if (!outfile)
-    {
-        cout << "Cannot write dpv to file\n";
-        exit(EXIT_FAILURE);
-    }
-    for (auto it = this->D_pv.begin(); it != this->D_pv.end(); it++)
-    {
-        outfile << it->first << "\n";
-        outfile << it->second.ctr << "\n";
-        outfile << it->second.master_key << "\n\n";
-    }
-    outfile.close();
+    if(!load_Dv(filePath, this->D_pv)) {cerr << "Loading D_pv failed." << endl;};
 }
 
-void Client::store_de(const string &filePath)
+void Client::load_de(const string &filePath)
 {
-    ofstream outfile(filePath, ios::out);
-    if (!outfile)
-    {
-        cout << "Cannot write de to file\n";
-        exit(EXIT_FAILURE);
-    }
-    for (auto it = this->D_e.begin(); it != this->D_e.end(); it++)
-    {
-        outfile << it->first << "\n";
-        outfile << it->second.size() << "\n";
-        outfile << it->second << "\n\n";
-    }
-    outfile.close();
+    if(!load_De(filePath, this->D_e)) {cerr << "Loading D_e failed." << endl;};
+}
+
+void Client::save_dcv(const string &filePath)
+{
+    if (!save_Dv(filePath, this->D_cv)) { cerr << "Saving D_cv failed." << endl;};
+}
+
+void Client::save_dpv(const string &filePath)
+{
+    if (!save_Dv(filePath, this->D_pv)) { cerr << "Saving D_pv failed." << endl;};
+}
+
+void Client::save_de(const string &filePath)
+{
+    if (!save_De(filePath, this->D_e)) { cerr << "Saving D_e failed." << endl;};
 }
 
 void Client::update_graph(const std::string &src, const std::string &dest, const size_t weight, int op)

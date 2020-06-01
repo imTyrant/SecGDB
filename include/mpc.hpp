@@ -22,6 +22,7 @@ int secure_compare(ProtocolDesc& pd, JL_PK& pk, mpz_class& left, mpz_class& righ
 void secure_multiply_remote(JL_PK& jl_pk, JL_SK& jl_sk, boost::asio::ip::tcp::socket& sock);
 mpz_class secure_multiply(JL_PK& jl_pk, mpz_class& left, mpz_class& right, boost::asio::ip::tcp::socket& sock);
 
+void test_obc(ProtocolDesc& pd);
 
 extern size_t g_compare_counter;
 extern double g_compare_time_cost;

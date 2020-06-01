@@ -35,6 +35,7 @@ typedef unsigned char BYTE;
 
 #define MAX_EDGE_WEIGHT 10000
 #define INFIENITY 1000000
+#define EDGE_VALUE_SCALE 16 // Max value of edge is 2^EDGE_VALUE_SCALE
 
 void log_memory(const void* ptr, size_t size);
 

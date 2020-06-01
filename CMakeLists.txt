@@ -4,6 +4,9 @@ project(GraphShield)
 # configuration
 set (CMAKE_CXX_STANDARD 11)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+
 # specify security level
 option(SL_128 "Using 128-bits secruity level " ON)
 if (SL_128 MATCHES ON)
@@ -61,4 +64,4 @@ add_subdirectory (test)
 # build main
 add_executable(main main.cpp client.cpp server.cpp proxy.cpp)
 # link
-target_link_libraries(main utils oc ${LABHE_LIB} ${OBLIVC_LIB} pthread gcrypt gmpxx gmp crypto boost_system boost_filesystem)
+target_link_libraries(main utils ${LABHE_LIB} oc ${OBLIVC_LIB} pthread gcrypt gmpxx gmp crypto boost_system boost_filesystem)

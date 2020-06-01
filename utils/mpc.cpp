@@ -59,16 +59,18 @@ void secure_compare_remote(ProtocolDesc& pd, JL_PK& pk, JL_SK& sk, tcp::socket& 
 {
     mpz_class left, right, unblinded_left, unblinded_right;
     net_recv_mpz_class(sock, left);
+    cout << "Receive one\n";
     net_recv_mpz_class(sock, right);
+    cout << "Receive two\n";
 
     JL_decryption(sk, pk, left, unblinded_left);
     JL_decryption(sk, pk, right, unblinded_right);
 
-    OBLIVC_IO io;
+    OBLIVC_IO io = {0};
     io.a_1 = unblinded_left.get_si();
     io.a_2 = unblinded_right.get_si();
 
-    setCurrentParty(&pd, OBLIVC_PROXY);
+    setCurrentParty(&pd, SEC_GDB_OBLIVC_PROXY);
     execYaoProtocol(&pd, compare, &io);
 }
 
@@ -84,7 +86,7 @@ int secure_compare(ProtocolDesc& pd, JL_PK& jl_pk, mpz_class& left, mpz_class& r
 #else //SEC_GDB_WITHOUT_ENCRYPTION
     mpz_class r_left, r_right, r_left_enc, r_right_enc;
     
-    // Subtract 2 is for preventing overflow
+    // Subtracting 2 is for preventing overflow
     gen_random(r_left, r_right, sizeof(OBLIVC_DATA_TYPE) * 8  - 2);
 
     JL_encryption(jl_pk, r_left, r_left_enc);
@@ -97,11 +99,11 @@ int secure_compare(ProtocolDesc& pd, JL_PK& jl_pk, mpz_class& left, mpz_class& r
     net_send_mpz_class(sock, blinded_left);
     net_send_mpz_class(sock, blinded_right);
 
-    OBLIVC_IO io;
+    OBLIVC_IO io = {0};
     io.r_1 = r_left.get_si();
     io.r_2 = r_right.get_si();
 
-    setCurrentParty(&pd, OBLIVC_SERVER);
+    setCurrentParty(&pd, SEC_GDB_OBLIVC_SERVER);
     execYaoProtocol(&pd, compare, &io);
     result = io.result;
 #endif //SEC_GDB_WITHOUT_ENCRYPTION

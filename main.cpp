@@ -6,6 +6,7 @@
 #include <openssl/conf.h>
 #include <string>
 #include <unordered_map>
+#include <thread>
 
 #include <boost/filesystem.hpp>
 #include "cxxopts.hpp"
@@ -26,7 +27,10 @@
 #include "io.hpp"
 
 using namespace std;
-using namespace boost::filesystem;
+namespace asio = boost::asio;
+using boost::asio::ip::tcp;
+namespace fs = boost::filesystem;
+
 /*
  * For dbg
  */
@@ -71,12 +75,14 @@ void simple_test(cxxopts::ParseResult& args)
 
 void enc_graph(cxxopts::ParseResult& args)
 {
-    path outdir(args["outdir"].as<string>());
+    fs::path outdir(args["outdir"].as<string>());
 
     Client client;
     auto enc_start = chrono::high_resolution_clock::now();
-    client.enc_graph(args["input"].as<string>());
+    client.enc_graph(args["infile"].as<string>());
     auto enc_end = chrono::high_resolution_clock::now();
+
+    cout << chrono::duration<double>(enc_end-enc_start).count() << endl;
 
     save_pk((outdir.remove_trailing_separator() / "pk.json"), client.get_pk());
     save_sk((outdir.remove_trailing_separator() / "sk.json"), client.get_sk());
@@ -86,10 +92,64 @@ void enc_graph(cxxopts::ParseResult& args)
     save_De((outdir.remove_trailing_separator() / "de.bin"), client.get_De());
 }
 
+void query_dist(cxxopts::ParseResult& args)
+{
+    fs::path outdir(args["outdir"].as<string>());
+
+    // Client
+    Client client;
+    client.read_pk((outdir.remove_trailing_separator() / "pk.json").string());
+    client.read_sk((outdir.remove_trailing_separator() / "sk.json").string());
+
+    // client.load_dcv((outdir.remove_trailing_separator() / "dcv.bin").string());
+    // client.load_dpv((outdir.remove_trailing_separator() / "dpv.bin").string());
+    // client.load_de((outdir.remove_trailing_separator() / "de.bin").string());
+
+    client.enc_graph(args["infile"].as<string>());
+    
+    asio::io_service service;
+    tcp::endpoint ep(asio::ip::address::from_string(args["address"].as<string>()), args["port"].as<short>());
+    tcp::socket sock(service);
+
+    Server server(client.get_De(), client.get_pk(), sock, ep);
+    Request reqs = client.give_request("0", "8");
+
+    auto query_start = chrono::high_resolution_clock::now();
+    mpz_class result_enc = server.query_dist(reqs.F_1_s, reqs.P_s, reqs.P_t, reqs.constrained_key, reqs.ctr);
+    auto query_end = chrono::high_resolution_clock::now();
+
+    cout << chrono::duration<double>(query_end - query_start).count() << endl;
+
+    mpz_class enc;
+    JL_decryption(client.get_sk(), client.get_pk(), result_enc, enc);
+    cout << enc.get_str() << endl;
+}
+
+void start_proxy(cxxopts::ParseResult& args)
+{
+    fs::path outdir(args["outdir"].as<string>());
+
+    // Client
+    Client client;
+    client.read_pk((outdir.remove_trailing_separator() / "pk.json").string());
+    client.read_sk((outdir.remove_trailing_separator() / "sk.json").string());
+
+    client.load_dcv((outdir.remove_trailing_separator() / "dcv.bin").string());
+    client.load_dpv((outdir.remove_trailing_separator() / "dpv.bin").string());
+    client.load_de((outdir.remove_trailing_separator() / "de.bin").string());
+
+    asio::io_service service;
+    tcp::acceptor acceptor(service, tcp::endpoint(tcp::v4(), args["port"].as<short>()));
+    Proxy proxy(client.get_Dpv(), client.get_pk(), client.get_sk().jl_sk, acceptor, service);
+    proxy.accept();
+}
+
 /* Experiments regester. */
 unordered_map<string, void (*) (cxxopts::ParseResult&)> Experiments({
     {"simple_test", simple_test},
-    {"enc_graph", enc_graph}
+    {"enc_graph", enc_graph},
+    {"start_proxy", start_proxy},
+    {"query_dist", query_dist}
 });
 
 /* Main */

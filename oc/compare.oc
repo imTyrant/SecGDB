@@ -10,10 +10,10 @@ void compare(void* args)
 
     obliv OBLIVC_DATA_TYPE a1, a2, r1, r2;
 
-    a1 = feedOblivInt(input->a_1, OBLIVC_PROXY);
-    a2 = feedOblivInt(input->a_2, OBLIVC_PROXY);
-    r1 = feedOblivInt(input->r_1, OBLIVC_SERVER);
-    r2 = feedOblivInt(input->r_2, OBLIVC_SERVER);
+    a1 = feedOblivInt(input->a_1, SEC_GDB_OBLIVC_PROXY);
+    a2 = feedOblivInt(input->a_2, SEC_GDB_OBLIVC_PROXY);
+    r1 = feedOblivInt(input->r_1, SEC_GDB_OBLIVC_SERVER);
+    r2 = feedOblivInt(input->r_2, SEC_GDB_OBLIVC_SERVER);
     
     obliv OBLIVC_DATA_TYPE left = a1 - r1;
     obliv OBLIVC_DATA_TYPE right = a2 - r2;
