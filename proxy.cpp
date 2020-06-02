@@ -108,7 +108,7 @@ void Proxy::parse_request(ip::tcp::socket sock)
         try
         {
             PROTOCOL_HEAD_TYPE protocol = net_recv_protocol_head(sock);
-            log_dbg_fmt("\nProtocol: %02hhx", protocol);
+            log_dbg_fmt("\nProtocol: %02hhx\n", protocol);
             switch (protocol)
             {
                 case MPC_SECURE_COMPARSION:

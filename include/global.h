@@ -47,7 +47,7 @@ void log_memory(const void* ptr, size_t size);
 static void log_dbg(const char* msg)
 {
 #ifdef SEC_GDB_DBG
-    fprintf(stderr, msg);
+    fprintf(stderr, "%s", msg);
 #endif
 }
 

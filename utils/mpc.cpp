@@ -79,7 +79,7 @@ void secure_compare_remote(ProtocolDesc& pd, JL_PK& pk, JL_SK& sk, tcp::socket& 
     setCurrentParty(&ppd, SEC_GDB_OBLIVC_PROXY);
     execYaoProtocol(&ppd, compare, &io);
     cleanupProtocol(&ppd);
-    log_dbg_fmt("Result %d", io.result);
+    log_dbg_fmt("Result %d\n", io.result);
 }
 
 int secure_compare(ProtocolDesc& pd, JL_PK& jl_pk, mpz_class& left, mpz_class& right, tcp::socket& sock)
@@ -126,7 +126,7 @@ int secure_compare(ProtocolDesc& pd, JL_PK& jl_pk, mpz_class& left, mpz_class& r
     cleanupProtocol(&ppd);
 
     result = io.result;
-    log_dbg_fmt("Result %d", io.result);
+    log_dbg_fmt("Result %d\n", io.result);
 #endif //SEC_GDB_WITHOUT_ENCRYPTION
     auto end_time = std::chrono::high_resolution_clock::now();
     g_compare_time_cost += std::chrono::duration<double>(end_time - start_time).count();

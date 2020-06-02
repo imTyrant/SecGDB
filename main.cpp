@@ -47,12 +47,19 @@ PK g_pk;
 
 void init_global_key(const char* keydir)
 {
-    
 #if SEC_GDB_DBG
-    std::string sk_path = std::string(keydir) + "sk.json";
-    std::string pk_path = std::string(keydir) + "pk.json";
-    load_sk(sk_path, g_sk);
-    load_pk(sk_path, g_pk);
+    fs::path outdir(keydir);
+    load_sk((outdir.remove_trailing_separator() / "sk.json").string(), g_sk);
+    load_pk((outdir.remove_trailing_separator() / "pk.json").string(), g_pk);
+#endif
+}
+
+void init_dbg_client(const char* outputdir)
+{
+#if SEC_GDB_DBG
+    fs::path outdir(outputdir);
+    dbg_client.read_pk((outdir.remove_trailing_separator() / "pk.json").string());
+    dbg_client.read_sk((outdir.remove_trailing_separator() / "sk.json").string());
 #endif
 }
 
@@ -118,7 +125,8 @@ void query_dist(cxxopts::ParseResult& args)
     client.read_pk((outdir.remove_trailing_separator() / "pk.json").string());
     client.read_sk((outdir.remove_trailing_separator() / "sk.json").string());
 
-    init_global_key(outdir.remove_trailing_separator().string().c_str());
+    init_dbg_client(outdir.string().c_str());
+    init_global_key(outdir.string().c_str());
 
     client.enc_graph(args["infile"].as<string>());
     // for (auto it = client.get_graph().adjacency_list.begin(); it != client.get_graph().adjacency_list.end(); it++)
