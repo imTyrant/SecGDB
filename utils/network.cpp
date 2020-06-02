@@ -153,7 +153,8 @@ bool net_send_constrain(tcp::socket& sock, GGM& ggm, Constrain& con, int ctr)
 
 void net_send_protocol_head(tcp::socket& sock, PROTOCOL_HEAD_TYPE protocol)
 {
-    usleep(500); // ugly hack.
+    g_protocol_ctr ++;
+    usleep(500); // Ugly hack, slow down for preventing erro occuring during cleaning obliv-c protocol.
     boost::system::error_code ec;
     boost::asio::write(sock, boost::asio::buffer(&protocol, sizeof(PROTOCOL_HEAD_TYPE)), ec);
     if (ec) { throw sec_gdb_network_exception("Sending protocol head occurs error!", ec.value()); }

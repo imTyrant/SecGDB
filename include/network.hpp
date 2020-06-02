@@ -53,4 +53,6 @@ bool net_send_constrain(boost::asio::ip::tcp::socket& sock, GGM& ggm, Constrain&
 char net_recv_protocol_head(boost::asio::ip::tcp::socket& sock);
 void net_send_protocol_head(boost::asio::ip::tcp::socket& sock, PROTOCOL_HEAD_TYPE protocol);
 
+extern size_t g_protocol_ctr;
+
 #endif //SEC_GDB_H_NETWORK
