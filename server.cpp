@@ -77,7 +77,7 @@ int Server::contact_and_get_ggm_sub_key(GGM& ggm, Subkeys& sub_key, string& P_t)
 #else
     try
     {
-        Constrain con;
+        Constrain con = {0};
         net_send_protocol_head(sock, MPC_LOOK_UP);
         net_send_sized_data(sock, P_t.size(), const_cast<char*>(P_t.c_str()));
         net_recv_constrain(this->sock, ggm, con, ctr);

@@ -83,11 +83,13 @@ bool net_recv_constrain(tcp::socket& sock, GGM& ggm, Constrain& con, int& ctr)
     Constrain* tmp = &con;
     int con_size = 0;
     boost::system::error_code ec;
+    boost::asio::read(sock, boost::asio::buffer(reinterpret_cast<char*>(&ctr), sizeof(ctr)), ec);
+    if (ec) { throw sec_gdb_network_exception("Receiving counter occurs error!", ec.value()); }
+    if (ctr == 0) { ctr = 0; return true; }
     boost::asio::read(sock, boost::asio::buffer(reinterpret_cast<char*>(&con_size), sizeof(con_size)), ec);
     if (ec) { throw sec_gdb_network_exception("Receiving Constrian size occurs error!", ec.value()); }
     boost::asio::read(sock, boost::asio::buffer(reinterpret_cast<char*>(&con.depth), sizeof(con.depth)), ec);
     if (ec) { throw sec_gdb_network_exception("Receiving Constrian depth occurs error!", ec.value()); }
-    if (con_size < 1) { ctr = 0; return true; }
     try
     {
         for (int i = 0; i < con_size - 1; i ++) // The last one is special case
@@ -108,13 +110,15 @@ bool net_recv_constrain(tcp::socket& sock, GGM& ggm, Constrain& con, int& ctr)
     {
         throw sec_gdb_network_exception("Unknown error occurs during receiving Constrain!", -1);
     }
-    boost::asio::read(sock, boost::asio::buffer(reinterpret_cast<char*>(&ctr), sizeof(ctr)), ec);
-    if (ec) { throw sec_gdb_network_exception("Receiving counter occurs error!", ec.value()); }
     return true;
 }
 
 bool net_send_constrain(tcp::socket& sock, GGM& ggm, Constrain& con, int ctr)
 {
+    boost::system::error_code ec;
+    boost::asio::write(sock, boost::asio::buffer(reinterpret_cast<char*>(&ctr), sizeof(ctr)), ec);
+    if (ec) { throw sec_gdb_network_exception("Sending counter occurs error!", ec.value()); }
+    if (ctr == 0) { return true; }
     int con_size = 0;
     Constrain* tmp = &con;
     while (tmp)
@@ -122,7 +126,6 @@ bool net_send_constrain(tcp::socket& sock, GGM& ggm, Constrain& con, int ctr)
         con_size ++;
         tmp = tmp->next;
     }
-    boost::system::error_code ec;
     boost::asio::write(sock, boost::asio::buffer(reinterpret_cast<char*>(&con_size), sizeof(int)), ec);
     if (ec) { throw sec_gdb_network_exception("Sending Constrian size occurs error!", ec.value()); }
     boost::asio::write(sock, boost::asio::buffer(reinterpret_cast<char*>(&con.depth), sizeof(con.depth)), ec);
@@ -145,8 +148,6 @@ bool net_send_constrain(tcp::socket& sock, GGM& ggm, Constrain& con, int ctr)
     {
         throw sec_gdb_network_exception("Unknown error occurs during sending Constrain keys!", -1);
     }
-    boost::asio::write(sock, boost::asio::buffer(reinterpret_cast<char*>(&ctr), sizeof(ctr)), ec);
-    if (ec) { throw sec_gdb_network_exception("Sending counter occurs error!", ec.value()); }
     return true;
 }
 

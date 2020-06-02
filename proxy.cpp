@@ -82,7 +82,7 @@ tuple<Constrain, size_t> Proxy::lookup(string& P_u) const
     ggm.key_size = KEY_SIZE;
     ggm.n = MAX_GGM_DEPTH;
 
-    Constrain con;
+    Constrain con = {0};
 
     V_ITEM v_item = this->D_pv.at(P_u);
 

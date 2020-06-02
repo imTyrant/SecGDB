@@ -398,6 +398,7 @@ void print_constrain(Constrain* con, GGM* ggm)
 #ifdef SEC_GDB_DBG
     Constrain* tmp = con;
     fprintf(stderr,"depth: %d\n", tmp->depth);
+    if (tmp->depth == 0) { return; }
     while (tmp)
     {
         for (int i = 0; i < ggm->key_size; i ++)

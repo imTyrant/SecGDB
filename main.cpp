@@ -116,6 +116,36 @@ void enc_graph(cxxopts::ParseResult& args)
     save_De((outdir.remove_trailing_separator() / "de.bin"), client.get_De());
 }
 
+void query_flow(cxxopts::ParseResult& args)
+{
+    fs::path outdir(args["outdir"].as<string>());
+    Client client;
+    client.read_pk((outdir.remove_trailing_separator() / "pk.json").string());
+    client.read_sk((outdir.remove_trailing_separator() / "sk.json").string());
+
+    init_dbg_client(outdir.string().c_str());
+    init_global_key(outdir.string().c_str());
+
+    client.enc_graph(args["infile"].as<string>());
+    asio::io_service service;
+    tcp::endpoint ep(asio::ip::address::from_string(args["address"].as<string>()), args["port"].as<short>());
+    tcp::socket sock(service);
+
+    Server server(client.get_De(), client.get_pk(), sock, ep);
+    Request reqs = client.give_request("0", "5");
+
+    auto query_start = chrono::high_resolution_clock::now();
+    mpz_class result_enc = server.query_flow(reqs.F_1_s, reqs.P_s, reqs.P_t, reqs.constrained_key, reqs.ctr);
+    // mpz_class result_enc = server.query_dist(reqs.F_1_s, reqs.P_s, reqs.P_t, reqs.constrained_key, reqs.ctr);
+    auto query_end = chrono::high_resolution_clock::now();
+
+    cout << chrono::duration<double>(query_end - query_start).count() << endl;
+
+    mpz_class enc;
+    JL_decryption(client.get_sk(), client.get_pk(), result_enc, enc);
+    cout << "The final result is: " << enc.get_str() << endl;
+}
+
 void query_dist(cxxopts::ParseResult& args)
 {
     fs::path outdir(args["outdir"].as<string>());
@@ -181,7 +211,8 @@ unordered_map<string, void (*) (cxxopts::ParseResult&)> Experiments({
     {"simple_test", simple_test},
     {"enc_graph", enc_graph},
     {"start_proxy", start_proxy},
-    {"query_dist", query_dist}
+    {"query_dist", query_dist},
+    {"query_flow", query_flow}
 });
 
 /* Main */
