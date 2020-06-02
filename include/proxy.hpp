@@ -32,7 +32,10 @@ private:
     // D_pv
     std::unordered_map<std::string, V_ITEM> D_pv;
 
-    // Private functions
+    /* Private functions */
+    // Functions for value inverse
+    void inverse(boost::asio::ip::tcp::socket& sock);
+
     // Functions for secure multiplication
     void multiply(boost::asio::ip::tcp::socket& sock);
     

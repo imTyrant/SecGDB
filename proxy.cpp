@@ -19,6 +19,20 @@
 using namespace std;
 using namespace boost::asio;
 
+void Proxy::inverse(ip::tcp::socket& sock)
+{
+    try
+    {
+        secure_inverse_remote(this->pk.jl_pk, this->jl_sk, sock);
+    }
+    catch (const sec_gdb_network_exception& e)
+    {
+        std::cerr << "Secure inverse remote communication failed!\n"
+                <<  "Error: " << e.get_msg() << " Error code: " << e.get_ec() << endl;
+        throw sec_gdb_global_exception("Proxy fails to calculate inverse of value!");
+    }
+}
+
 void Proxy::compare(ip::tcp::socket& sock, ProtocolDesc& pd)
 {
     try
@@ -118,6 +132,10 @@ void Proxy::parse_request(ip::tcp::socket sock)
                 case MPC_SECURE_MULTIPLICATION:
                     log_dbg("Going to secure multiplication\n");
                     multiply(sock);
+                    break;
+                case MPC_SECURE_INVERSE:
+                    log_dbg("Going to calc inverse\n");
+                    inverse(sock);
                     break;
                 case MPC_LOOK_UP:
                     log_dbg("Going to look up\n");

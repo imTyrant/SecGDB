@@ -65,6 +65,25 @@ mpz_class Server::multiply(mpz_class& left, mpz_class& right)
     return result;
 }
 
+mpz_class Server::inverse(mpz_class& input)
+{
+    mpz_class result;
+    try
+    {
+#ifndef SEC_GDB_WITHOUT_ENCRYPTION
+        net_send_protocol_head(sock, MPC_SECURE_INVERSE);
+#endif
+        result = secure_inverse(this->pk.jl_pk, input, sock, SCALE_SHIFT_P);
+    }
+    catch(const sec_gdb_network_exception& e)
+    {
+        std::cerr << "Secure inverse local communication failed!\n"
+                <<  "Error: " << e.get_msg() << " Error code: " << e.get_ec() << endl;
+        throw sec_gdb_global_exception("Server fails to calculate inverse of input!");
+    }
+    return result;
+}
+
 int Server::contact_and_get_ggm_sub_key(GGM& ggm, Subkeys& sub_key, string& P_t)
 {
     int ctr = 0;

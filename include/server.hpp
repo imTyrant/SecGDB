@@ -164,6 +164,9 @@ private:
     // Contact with proxy for multiplying two encryption value
     mpz_class multiply (mpz_class& left, mpz_class& right);
 
+    // Contact with proxy for calc inverse
+    mpz_class inverse(mpz_class& input);
+
 public:
     Server(boost::asio::ip::tcp::socket& sock, boost::asio::ip::tcp::endpoint& proxy_info);
     Server(const std::unordered_map<std::string, std::string> &de, const PK &pk, boost::asio::ip::tcp::socket& sock, boost::asio::ip::tcp::endpoint& proxy_info);
