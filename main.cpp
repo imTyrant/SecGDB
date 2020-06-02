@@ -39,6 +39,23 @@ void log_memory(const void* ptr, size_t size)
     BIO_dump_fp(stdout, (char*)ptr, size);
 }
 
+#if SEC_GDB_DBG
+Client dbg_client;
+SK g_sk;
+PK g_pk;
+#endif
+
+void init_global_key(const char* keydir)
+{
+    
+#if SEC_GDB_DBG
+    std::string sk_path = std::string(keydir) + "sk.json";
+    std::string pk_path = std::string(keydir) + "pk.json";
+    load_sk(sk_path, g_sk);
+    load_pk(sk_path, g_pk);
+#endif
+}
+
 /* Simple mode */
 #ifdef SEC_GDB_SIMPLE_MODE
 boost::asio::io_service service;
@@ -101,11 +118,18 @@ void query_dist(cxxopts::ParseResult& args)
     client.read_pk((outdir.remove_trailing_separator() / "pk.json").string());
     client.read_sk((outdir.remove_trailing_separator() / "sk.json").string());
 
-    // client.load_dcv((outdir.remove_trailing_separator() / "dcv.bin").string());
-    // client.load_dpv((outdir.remove_trailing_separator() / "dpv.bin").string());
-    // client.load_de((outdir.remove_trailing_separator() / "de.bin").string());
+    init_global_key(outdir.remove_trailing_separator().string().c_str());
 
     client.enc_graph(args["infile"].as<string>());
+    // for (auto it = client.get_graph().adjacency_list.begin(); it != client.get_graph().adjacency_list.end(); it++)
+    // {
+    //     cout << it->first.name << " ";
+    //     for (auto each : it->second)
+    //     {
+    //         cout << each.weight << " ";
+    //     }
+    //     cout << "\n";
+    // }
     
     asio::io_service service;
     tcp::endpoint ep(asio::ip::address::from_string(args["address"].as<string>()), args["port"].as<short>());
@@ -122,7 +146,7 @@ void query_dist(cxxopts::ParseResult& args)
 
     mpz_class enc;
     JL_decryption(client.get_sk(), client.get_pk(), result_enc, enc);
-    cout << enc.get_str() << endl;
+    cout << "The final result is: " << enc.get_str() << endl;
 }
 
 void start_proxy(cxxopts::ParseResult& args)

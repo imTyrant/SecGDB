@@ -14,9 +14,12 @@ extern "C"
 {
 #include <unistd.h>
 #include "obliv.h"
-#include "compare.h"
+#include "mpc_compare.h"
 }
 
+#ifdef SEC_GDB_DBG
+#include "client.hpp"
+#endif
 
 using namespace std;
 using namespace boost::asio;
@@ -37,7 +40,7 @@ void gen_random(mpz_class &r_left, mpz_class &r_right, int size)
     }
     else
     {
-        cout << "Fail to open random source\n";
+        cerr << "Fail to open random source\n";
         for (int i = 0; i < KEY_SIZE; i++)
         {
             rand_buff[i] = '0' + (char)i;
@@ -59,9 +62,9 @@ void secure_compare_remote(ProtocolDesc& pd, JL_PK& pk, JL_SK& sk, tcp::socket& 
 {
     mpz_class left, right, unblinded_left, unblinded_right;
     net_recv_mpz_class(sock, left);
-    cout << "Receive one\n";
+    log_dbg("Receive one\n");
     net_recv_mpz_class(sock, right);
-    cout << "Receive two\n";
+    log_dbg("Receive two\n");
 
     JL_decryption(sk, pk, left, unblinded_left);
     JL_decryption(sk, pk, right, unblinded_right);
@@ -69,9 +72,14 @@ void secure_compare_remote(ProtocolDesc& pd, JL_PK& pk, JL_SK& sk, tcp::socket& 
     OBLIVC_IO io = {0};
     io.a_1 = unblinded_left.get_si();
     io.a_2 = unblinded_right.get_si();
+    log_dbg_fmt("a1 %s a2 %s\n", unblinded_left.get_str().c_str(),  unblinded_right.get_str().c_str());
 
-    setCurrentParty(&pd, SEC_GDB_OBLIVC_PROXY);
-    execYaoProtocol(&pd, compare, &io);
+    ProtocolDesc ppd = {0};
+    protocolUseTcp2PKeepAlive(&ppd, sock.native_handle(), false);
+    setCurrentParty(&ppd, SEC_GDB_OBLIVC_PROXY);
+    execYaoProtocol(&ppd, compare, &io);
+    cleanupProtocol(&ppd);
+    log_dbg_fmt("Result %d", io.result);
 }
 
 int secure_compare(ProtocolDesc& pd, JL_PK& jl_pk, mpz_class& left, mpz_class& right, tcp::socket& sock)
@@ -85,7 +93,14 @@ int secure_compare(ProtocolDesc& pd, JL_PK& jl_pk, mpz_class& left, mpz_class& r
     else { result = COMPARE_LOWER; }
 #else //SEC_GDB_WITHOUT_ENCRYPTION
     mpz_class r_left, r_right, r_left_enc, r_right_enc;
-    
+
+#ifdef SEC_GDB_DBG
+    mpz_class l, r;
+    JL_decryption(g_sk.jl_sk, g_pk.jl_pk, left, l);
+    JL_decryption(g_sk.jl_sk, g_pk.jl_pk, right, r);
+    log_dbg_fmt("Original r: %s l: %s\n", l.get_str().c_str(), r.get_str().c_str());
+#endif
+
     // Subtracting 2 is for preventing overflow
     gen_random(r_left, r_right, sizeof(OBLIVC_DATA_TYPE) * 8  - 2);
 
@@ -102,10 +117,16 @@ int secure_compare(ProtocolDesc& pd, JL_PK& jl_pk, mpz_class& left, mpz_class& r
     OBLIVC_IO io = {0};
     io.r_1 = r_left.get_si();
     io.r_2 = r_right.get_si();
+    log_dbg_fmt("r1: %s r2: \n", r_left.get_str().c_str(), r_right.get_str().c_str());
 
-    setCurrentParty(&pd, SEC_GDB_OBLIVC_SERVER);
-    execYaoProtocol(&pd, compare, &io);
+    ProtocolDesc ppd = {0};
+    protocolUseTcp2PKeepAlive(&ppd, sock.native_handle(), true);
+    setCurrentParty(&ppd, SEC_GDB_OBLIVC_SERVER);
+    execYaoProtocol(&ppd, compare, &io);
+    cleanupProtocol(&ppd);
+
     result = io.result;
+    log_dbg_fmt("Result %d", io.result);
 #endif //SEC_GDB_WITHOUT_ENCRYPTION
     auto end_time = std::chrono::high_resolution_clock::now();
     g_compare_time_cost += std::chrono::duration<double>(end_time - start_time).count();
@@ -146,12 +167,12 @@ mpz_class secure_multiply(JL_PK& jl_pk, mpz_class& left, mpz_class& right, tcp::
 
     if (! net_send_mpz_class(sock, blinded_left))
     {
-        cout << "Secure multiply sending left value error." << endl;
+        cerr << "Secure multiply sending left value error." << endl;
         return rtn;
     }
     if (! net_send_mpz_class(sock, blinded_right))
     {
-        cout << "Secure multiply sending right value error." << endl;
+        cerr << "Secure multiply sending right value error." << endl;
         return rtn;
     }
 

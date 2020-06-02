@@ -43,7 +43,7 @@ void server(const string& address, int port)
     INPUT input = {0};
 
     cout << "Server initializing...\n";
-    ProtocolDesc pd = {0};
+    
     // int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     // if (sock < 0)
     // {
@@ -81,44 +81,63 @@ void server(const string& address, int port)
 
     io_service service;
     ip::tcp::acceptor acc(service, ip::tcp::endpoint(ip::tcp::v4(), (short)port));
-    ip::tcp::socket socket(service);
+    acc.set_option(boost::asio::socket_base::reuse_address(true));
+
+    
     while(1)
     {
+        ip::tcp::socket socket(service);
         acc.accept(socket);
+        socket.set_option(ip::tcp::no_delay(true));
+        // socket.non_blocking(false);
+        int sockfd = socket.native_handle();
         cout << "Client connected.." << endl;
-        protocolUseTcp2PKeepAlive(&pd, socket.native_handle(), false);
+
+        
+        // ProtocolDesc pd = {0};
+        // protocolUseTcp2PKeepAlive(&pd, socket.native_handle(), false);
 
         int counter = 0;
         while (1)
         {
             // int error = 0;
             // socklen_t len_e = sizeof(error);
-            unsigned char a;
-            int code = recv(socket.native_handle(), &a, sizeof(a), MSG_PEEK);
-            cout << "Read code len " << code << endl;
-            if (code < 1) {break;}
+            char buff[100] = {0};
+            // ssize_t size = recv(socket.native_handle(), buff, 12, 0);
+            boost::system::error_code code;
+            int size = boost::asio::read(socket, boost::asio::buffer(buff, 12), code);
+            if (code) {break;}
+            if (size < 1) {break;}
+            for (int i = 0; i < size; i ++)
+            {
+                printf("%2x ", buff[i]);
+            }
+            cout << "\n" << endl;
             input = {0};
             input.a_1 = 19 + counter;
             input.a_2 = 30;
             cout << "a1 " << input.a_1 - 10 << " a2 " << input.a_2 - 20 << endl;
 
+            ProtocolDesc pd = {0};
+            protocolUseTcp2PKeepAlive(&pd, sockfd, false);
             setCurrentParty(&pd, OBLIVC_PROXY);
             execYaoProtocol(&pd, compare, &input);
-            cout << "Round " << counter++ << " Result:" << input.result << endl;
-            boost::asio::read(socket, boost::asio::buffer(&code, sizeof(code)));
+            cleanupProtocol(&pd);
+
+            cout << "Round " << counter++; printf(" result %x\n", input.result);
         }
-        cleanupProtocol(&pd);
+        
         socket.close();
+        cout << "Client Quit\n";
     }
     acc.close();    
     cout << "Quiting \n";
 
-    cout << "Client Quit\n";
+    
 }
 
 void client(const string& address, int port)
 {
-    ProtocolDesc pd = {0};
     INPUT input = {0};
 
     FILE *fp = fopen("/dev/urandom", "r");
@@ -142,9 +161,10 @@ void client(const string& address, int port)
     ip::tcp::socket socket(service);
     ip::tcp::endpoint ep(ip::address::from_string(address), (short)port);
     socket.connect(ep);
-    int sock = socket.native_handle();
+    socket.set_option(ip::tcp::no_delay(true));
+    // socket.non_blocking(false);
+    int sockfd = socket.native_handle();
 
-    protocolUseTcp2PKeepAlive(&pd, sock, true);
 
     int counter = 3;
     while(counter)
@@ -156,14 +176,21 @@ void client(const string& address, int port)
         cout << "r1 " << r1 << " r2 " << r2 << endl;
         input.r_1 = r1;
         input.r_2 = r2;
-        
+
+        char tmp[] = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0x10, 0x11, 0x12};
+        // send(socket.native_handle(), tmp, sizeof(tmp), 0);
+        boost::asio::write(socket, boost::asio::buffer(tmp, 12));
+        ProtocolDesc pd = {0};
+        protocolUseTcp2PKeepAlive(&pd, sockfd, true);
         cout << "Client round:" << counter-- << endl;
         setCurrentParty(&pd, OBLIVC_SERVER);
         cout << "exec" << endl;
         execYaoProtocol(&pd, compare, &input);
         cout << "Result:" << input.result << endl;
+        cleanupProtocol(&pd);
+        sleep(1);
     }
-    cleanupProtocol(&pd);
+    
     socket.close();
 
     cout << "Client Quit\n";

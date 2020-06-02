@@ -31,13 +31,34 @@ typedef unsigned char BYTE;
 
 // #define SEC_GDB_WITHOUT_ENCRYPTION
 
-// #define F_FUNCTION_DISABLE
+#define F_FUNCTION_DISABLE
 
 #define MAX_EDGE_WEIGHT 10000
 #define INFIENITY 1000000
 #define EDGE_VALUE_SCALE 16 // Max value of edge is 2^EDGE_VALUE_SCALE
 
 void log_memory(const void* ptr, size_t size);
+
+#ifdef SEC_GDB_DBG
+#include <stdio.h>
+#include <stdarg.h>
+#endif
+
+static void log_dbg(const char* msg)
+{
+#ifdef SEC_GDB_DBG
+    fprintf(stderr, msg);
+#endif
+}
+
+static void log_dbg_fmt(const char* fmt, ...)
+{
+#ifdef SEC_GDB_DBG
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+#endif
+}
 
 #ifdef __cplusplus
 }

@@ -392,3 +392,19 @@ void ggm_free_keys(Subkeys *subkeys)
     
     free(subkeys->keys);
 }
+
+void print_constrain(Constrain* con, GGM* ggm)
+{
+#ifdef SEC_GDB_DBG
+    Constrain* tmp = con;
+    fprintf(stderr,"depth: %d\n", tmp->depth);
+    while (tmp)
+    {
+        for (int i = 0; i < ggm->key_size; i ++)
+            fprintf(stderr, "%02x ", tmp->key[i] & 0xff);
+        fprintf(stderr,"\n");
+        tmp = tmp->next;
+    }
+    fprintf(stderr,"\n");
+#endif
+}

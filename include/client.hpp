@@ -89,6 +89,10 @@ class Client
     inline void set_Dcv(std::unordered_map<std::string, V_ITEM> &&Dcv) { this->D_cv = std::forward<std::unordered_map<std::string, V_ITEM>>(D_cv); }
 };
 
+#ifdef SEC_GDB_DBG
+extern Client dbg_client;
+#endif
+
 #ifdef SEC_GDB_SIMPLE_MODE
 extern Client g_client;
 #endif

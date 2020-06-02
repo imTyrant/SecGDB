@@ -25,4 +25,5 @@ void compare(void* args)
     else { rtn = -1; }
 
     revealOblivInt(&input->result, rtn, 0);
+    fprintf(stdout, "Result is %x ", input->result);
 }

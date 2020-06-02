@@ -45,7 +45,6 @@ bool net_recv_mpz_class(tcp::socket& sock, mpz_class& out)
         int size = net_recv_sized_data(sock, buff);
         set_mpz_raw(out.get_mpz_t(), size, buff);
         delete buff;
-        cout << "Receiving " << out.get_str() << endl;
     }
     catch (const sec_gdb_network_exception& e)
     {
@@ -64,7 +63,6 @@ bool net_send_mpz_class(tcp::socket& sock, mpz_class& in)
 {
     try
     {
-        cout << "Sending " << in.get_str() << endl;
         string container = let_mpz_raw_to_str(in.get_mpz_t());
         net_send_sized_data(sock, container.size(), (char*)container.c_str());
     }
@@ -87,6 +85,8 @@ bool net_recv_constrain(tcp::socket& sock, GGM& ggm, Constrain& con, int& ctr)
     boost::system::error_code ec;
     boost::asio::read(sock, boost::asio::buffer(reinterpret_cast<char*>(&con_size), sizeof(con_size)), ec);
     if (ec) { throw sec_gdb_network_exception("Receiving Constrian size occurs error!", ec.value()); }
+    boost::asio::read(sock, boost::asio::buffer(reinterpret_cast<char*>(&con.depth), sizeof(con.depth)), ec);
+    if (ec) { throw sec_gdb_network_exception("Receiving Constrian depth occurs error!", ec.value()); }
     if (con_size < 1) { ctr = 0; return true; }
     try
     {
@@ -125,6 +125,8 @@ bool net_send_constrain(tcp::socket& sock, GGM& ggm, Constrain& con, int ctr)
     boost::system::error_code ec;
     boost::asio::write(sock, boost::asio::buffer(reinterpret_cast<char*>(&con_size), sizeof(int)), ec);
     if (ec) { throw sec_gdb_network_exception("Sending Constrian size occurs error!", ec.value()); }
+    boost::asio::write(sock, boost::asio::buffer(reinterpret_cast<char*>(&con.depth), sizeof(con.depth)), ec);
+    if (ec) { throw sec_gdb_network_exception("Sending Constrian depth occurs error!", ec.value()); }
     try
     {
         tmp = &con;
@@ -150,6 +152,7 @@ bool net_send_constrain(tcp::socket& sock, GGM& ggm, Constrain& con, int ctr)
 
 void net_send_protocol_head(tcp::socket& sock, PROTOCOL_HEAD_TYPE protocol)
 {
+    usleep(500); // ugly hack.
     boost::system::error_code ec;
     boost::asio::write(sock, boost::asio::buffer(&protocol, sizeof(PROTOCOL_HEAD_TYPE)), ec);
     if (ec) { throw sec_gdb_network_exception("Sending protocol head occurs error!", ec.value()); }

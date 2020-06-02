@@ -92,4 +92,10 @@ mpz_class JL_homo_mul(const PK &pk, const mpz_class &left, const mpz_class &righ
 
 void masking(const void* input, size_t size, unsigned char* mask, size_t mask_size, unsigned char* out);
 
+
+#ifdef SEC_GDB_DBG
+extern SK g_sk;
+extern PK g_pk;
+#endif
+
 #endif

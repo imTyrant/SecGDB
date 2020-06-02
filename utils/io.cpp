@@ -99,7 +99,7 @@ bool load_pk(const fs::path& p, PK& pk)
     pk.jl_pk.k = mpz_class(j["jl_pk"]["k"].get<string>(), 10);
     pk.jl_pk.N = mpz_class(j["jl_pk"]["N"].get<string>(), 10);
     pk.jl_pk.y = mpz_class(j["jl_pk"]["y"].get<string>(), 10);
-    pk.jl_pk._2k1 = mpz_class(j["jl_pk"]["_2k"].get<string>(), 10);
+    pk.jl_pk._2k1 = mpz_class(j["jl_pk"]["_2k1"].get<string>(), 10);
     pk.jl_pk._2k = mpz_class(j["jl_pk"]["_2k"].get<string>(), 10);
     is.close();
     return true;

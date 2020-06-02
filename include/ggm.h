@@ -39,6 +39,8 @@ void ggm_derive(GGM *ggm, Constrain *constrain, Subkeys *subkeys);
 
 void ggm_free_keys(Subkeys *subkeys);
 
+void print_constrain(Constrain* con, GGM* ggm);
+
 #ifdef __cplusplus
 }
 #endif

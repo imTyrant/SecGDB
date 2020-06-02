@@ -81,6 +81,7 @@ int Server::contact_and_get_ggm_sub_key(GGM& ggm, Subkeys& sub_key, string& P_t)
         net_send_protocol_head(sock, MPC_LOOK_UP);
         net_send_sized_data(sock, P_t.size(), const_cast<char*>(P_t.c_str()));
         net_recv_constrain(this->sock, ggm, con, ctr);
+        print_constrain(&con, &ggm);
         if (ctr != 0)
         {
             ggm_derive(&ggm, &con, &sub_key);
@@ -518,12 +519,15 @@ void Server::page_rank(std::string &F_1_s, std::string &P_s, Constrain &constrai
 void Server::network_init()
 {
     this->sock.connect(proxy_info);
+    this->sock.set_option(boost::asio::ip::tcp::no_delay(true));
 }
 
 void Server::oblivc_init()
 {
-    int skn = sock.native_handle();
-    protocolUseTcp2PKeepAlive(&pd, skn, true);
+    /* Init new pd in each round of secure comparsion */
+
+    // int skn = sock.native_handle();
+    // protocolUseTcp2PKeepAlive(&pd, skn, true);
 }
 
 Server::Server(boost::asio::ip::tcp::socket& sock, boost::asio::ip::tcp::endpoint& proxy_info)
@@ -545,6 +549,6 @@ Server::Server(const unordered_map<string, string> &de, const PK &pk, boost::asi
 
 Server::~Server()
 {
-    cleanupProtocol(&pd);
+    // cleanupProtocol(&pd);
     sock.close();
 }

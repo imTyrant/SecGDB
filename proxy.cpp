@@ -56,7 +56,7 @@ void Proxy::lookup_remote(ip::tcp::socket& sock)
     {
         char* buff = nullptr;
         int size = net_recv_sized_data(sock, buff);
-        string P_u(buff);
+        string P_u(buff, size);
         auto result = lookup(P_u);
         net_send_constrain(sock, ggm, std::get<0>(result), std::get<1>(result));
         delete buff;
@@ -82,51 +82,62 @@ tuple<Constrain, size_t> Proxy::lookup(string& P_u) const
     ggm.key_size = KEY_SIZE;
     ggm.n = MAX_GGM_DEPTH;
 
-    Constrain rtn;
+    Constrain con;
 
-    V_ITEM v_item = this->D_pv.at(P_u);;
+    V_ITEM v_item = this->D_pv.at(P_u);
 
     if (v_item.ctr != 0)
     {
-        ggm_find_best_range_cover(&ggm, const_cast<char*>(v_item.master_key.c_str()), 0, v_item.ctr - 1, &rtn);
+        ggm_find_best_range_cover(&ggm, const_cast<char*>(v_item.master_key.c_str()), 0, v_item.ctr - 1, &con);
     }
+
+    print_constrain(&con, &ggm);
     
-    return make_tuple(rtn, v_item.ctr);
+    return make_tuple(con, v_item.ctr);
 }
 
 
 void Proxy::parse_request(ip::tcp::socket sock)
 {
-    cout << "Client connected" << endl;
     ProtocolDesc pd = {0};
-    protocolUseTcp2PKeepAlive(&pd, sock.native_handle(), false);
+    /* Init pd in each secure comparsion round */
+    // protocolUseTcp2PKeepAlive(&pd, sock.native_handle(), false);
+
     while(true)
     {
         try
         {
             PROTOCOL_HEAD_TYPE protocol = net_recv_protocol_head(sock);
+            log_dbg_fmt("\nProtocol: %02hhx", protocol);
             switch (protocol)
             {
                 case MPC_SECURE_COMPARSION:
-                    cout << "Going to secure comparsion\n";
+                    log_dbg("Going to secure comparsion\n");
                     compare(sock, pd);
                     break;
                 case MPC_SECURE_MULTIPLICATION:
-                    cout << "Going to secure multiplication\n";
+                    log_dbg("Going to secure multiplication\n");
                     multiply(sock);
                     break;
                 case MPC_LOOK_UP:
-                    cout << "Going to lookup\n";
+                    log_dbg("Going to look up\n");
                     lookup_remote(sock);
                     break;
                 default:
-                    break;
+                    throw sec_gdb_global_exception("Unrecognized protocol head: ");
             }
         }
         catch (const sec_gdb_network_exception& e)
         {
-            std::cerr << "Proxy fails to get requests!\n"
-                    << "Error: " << e.get_msg() << " Error code: " << e.get_ec() << endl;
+            if (e.get_ec() == 2)
+            {
+                cout << "Connection with the client may loss" << endl;
+            }
+            else
+            {
+                std::cerr << "Proxy fails to get requests!\n"
+                        << "Error: " << e.get_msg() << " Error code: " << e.get_ec() << endl;
+            }
             break;
         }
         catch (const sec_gdb_global_exception& e)
@@ -135,7 +146,6 @@ void Proxy::parse_request(ip::tcp::socket sock)
             break;
         }
     }
-    cleanupProtocol(&pd);
     sock.close();
     cout << "Client Quit" << endl;
 }
@@ -147,6 +157,7 @@ void Proxy::accept()
         ip::tcp::socket sock(service);
         cout << "Start listening\n";
         acceptor.accept(sock);
+        sock.set_option(ip::tcp::no_delay(true));
         cout << "Client connected\n";
         
         parse_request(std::move(sock));

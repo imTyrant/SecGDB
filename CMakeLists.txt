@@ -16,6 +16,13 @@ else()
     # add_definitions(-DSECURITY_LEVEL_256)
 endif()
 
+# enable debug
+option(EN_DBG "Enable debug")
+if (EN_DBG MATCHES ON)
+    message("Debug mode is ${EN_DBG}")
+    add_definitions(-DSEC_GDB_DBG)
+endif()
+
 # local proxy
 option(USING_LOCAL_PROXY "Prepare a local proxy")
 if (USING_LOCAL_PROXY MATCHES ON)
