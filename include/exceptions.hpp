@@ -16,6 +16,11 @@ public:
     {
         return this->em;
     }
+
+    const char* what()
+    {
+        return this->em;
+    }
 };
 
 #endif // SEC_GDB_H_EXCEPTION

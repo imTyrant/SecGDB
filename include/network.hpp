@@ -13,7 +13,8 @@ typedef char PROTOCOL_HEAD_TYPE;
 const PROTOCOL_HEAD_TYPE MPC_EMPTY_PROTOCOL = 0x0;
 const PROTOCOL_HEAD_TYPE MPC_SECURE_COMPARSION = 0x1;
 const PROTOCOL_HEAD_TYPE MPC_SECURE_MULTIPLICATION = 0x2;
-const PROTOCOL_HEAD_TYPE MPC_LOOK_UP = 0x3;
+const PROTOCOL_HEAD_TYPE MPC_SECURE_INVERSE = 0x3;
+const PROTOCOL_HEAD_TYPE MPC_LOOK_UP = 0x4;
 
 /* Default value */
 const short PORT = 23333;
@@ -37,6 +38,14 @@ public:
     int get_ec() const
     {
         return this->err_code;
+    }
+    const char* what()
+    {
+        std::string msg("Error: ");
+        msg += err_msg;
+        msg += " Error code: ";
+        msg += std::to_string(err_code);
+        return msg.c_str();
     }
 };
 

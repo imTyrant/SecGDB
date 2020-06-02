@@ -511,7 +511,7 @@ void Server::page_rank(std::string &F_1_s, std::string &P_s, Constrain &constrai
             {
                 mpz_class mul;
                 // secure multiple
-                // pr_value += 
+                // mul = this->multiply();
                 pr_value = JL_homo_add(this->pk, pr_value, mul);
             }
             // pr_value = JL_homo_mul(this->pk, pr_value, d);

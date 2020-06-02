@@ -17,7 +17,7 @@ else()
 endif()
 
 # enable debug
-option(EN_DBG "Enable debug" ON)
+option(EN_DBG "Enable debug")
 if (EN_DBG MATCHES ON)
     message("Debug mode is ${EN_DBG}")
     add_definitions(-DSEC_GDB_DBG)

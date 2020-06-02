@@ -87,6 +87,9 @@ double g_compare_time_cost = 0.0;
 size_t g_mul_counter = 0;
 double g_mul_time_cost = 0.0;
 
+size_t g_ivs_counter = 0;
+double g_ivs_time_cost = 0.0;
+
 size_t g_protocol_ctr = 0;
 
 void simple_test(cxxopts::ParseResult& args)
@@ -219,6 +222,7 @@ unordered_map<string, void (*) (cxxopts::ParseResult&)> Experiments({
 });
 
 /* Main */
+/*
 int main(int argc, char *argv[])
 {
     cxxopts::Options options("GraphShield");
@@ -258,3 +262,127 @@ int main(int argc, char *argv[])
     
     return EXIT_SUCCESS;
 }
+*/
+
+
+void server(const string& address, short port)
+{
+    cout << "I'm server.." << endl;
+    boost::asio::io_service service;
+    boost::asio::ip::tcp::acceptor acc(service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
+    PK pk;
+    SK sk;
+
+    load_pk(string("exp1/pk.json"), pk);
+    load_sk(string("exp1/sk.json"), sk);
+    for(;;)
+    {
+        boost::asio::ip::tcp::socket clt(service);
+        acc.accept(clt);
+        cout << "Client connected.." << endl;
+        clt.set_option(boost::asio::ip::tcp::no_delay(true));
+        while(true)
+        {
+            try
+            {
+                // secure_multiply_remote(pk.jl_pk, sk.jl_sk, clt);
+                secure_inverse_remote(pk.jl_pk, sk.jl_sk, clt);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+                break;
+            }
+            
+        }
+        clt.close();
+    }
+}
+
+void client(const string& address, short port)
+{
+    cout << "I'm client.." << endl;
+    boost::asio::io_service service;
+    boost::asio::ip::tcp::socket sock(service);
+    boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string(address), port);
+    sock.connect(ep);
+    sock.set_option(boost::asio::ip::tcp::no_delay(true));
+
+    PK pk;
+    SK sk;
+
+    load_pk(string("exp1/pk.json"), pk);
+    load_sk(string("exp1/sk.json"), sk);
+
+    init_global_key("exp1");
+
+    while (true)
+    {
+        try
+        {
+            boost::system::error_code ec;
+            float input;
+            cin >> input;
+            size_t base = (1 << SCALE_SHIFT_P);
+            size_t tmp = (size_t)(input * base);
+            
+            mpz_class input_enc;
+            JL_encryption(pk, tmp, input_enc);
+
+            mpz_class out_enc = secure_inverse(pk.jl_pk, input_enc, sock, SCALE_SHIFT_P);
+
+            mpz_class mbase(base);
+            mpz_class mtwo(2 * base);
+            mpz_class rtn(2);
+            mpz_class ii(tmp);
+            // long long rtn = 1;//(float(base) * 0.001);
+            // long long two = 2 * base;
+            for (int i = 0; i < INVERSE_ITERS; i ++)
+            {
+                // int tmp1 = rtn * tmp;
+                // int tmp2 = 2 * base - tmp1;
+                // rtn *= tmp2;
+                rtn = rtn * (mtwo - (rtn * ii / mbase)) / mbase;
+            }
+
+            mpz_class output;
+            JL_decryption(sk, pk, out_enc, output);
+            
+            cout << output.get_str() << " " << rtn.get_str() << endl;
+            cout << float(output.get_ui()) / float(base) << " " << (1 / input) << endl;
+
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+            break;
+        }
+    }
+    cout << "Quiting.." << endl;
+}
+
+int main(int argc, char** argv)
+{
+    cxxopts::Options options("");
+
+    options.add_options()
+        ("party", "", cxxopts::value<string>())
+        ("a,address", "", cxxopts::value<string>()->default_value("127.0.0.1"))
+        ("p,port", "", cxxopts::value<short>()->default_value("23333"))
+        ;
+
+    auto args = options.parse(argc, argv);
+
+    if (args["party"].as<string>() == "server")
+    {
+        server(args["address"].as<string>(), args["port"].as<short>());
+    }
+    else
+    {
+        client(args["address"].as<string>(), args["port"].as<short>());
+    }
+
+    return EXIT_SUCCESS;
+}
+
+

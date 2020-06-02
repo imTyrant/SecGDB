@@ -25,6 +25,10 @@ extern "C"
 
 #define MAX_GGM_DEPTH 20
 
+#define SCALE_SHIFT_P 16
+
+#define INVERSE_ITERS 40
+
 typedef unsigned char BYTE;
 
 // #define SEC_GDB_SIMPLE_MODE
