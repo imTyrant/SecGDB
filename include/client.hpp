@@ -22,7 +22,7 @@ class Client
     // D_v which is outsourced to the proxy.
     // The key is raw char array contained by std::string.
     // The size should be KEY_SIZE defined in <global.h>.
-    // During the initalization of the key, the size should be provided,
+    // During the initialization of the key, the size should be provided,
     // and it should KEY_SIZE. For example, std::string(XXX, KEY_SIZE);
     std::unordered_map<std::string, V_ITEM> D_pv; 
     

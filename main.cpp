@@ -22,6 +22,7 @@
 #include "crypto_stuff.hpp"
 #include "graph.hpp"
 #include "data_structures.hpp"
+#include "network.hpp"
 
 #include "mpc.hpp"
 #include "io.hpp"
@@ -85,6 +86,8 @@ double g_compare_time_cost = 0.0;
 
 size_t g_mul_counter = 0;
 double g_mul_time_cost = 0.0;
+
+size_t g_protocol_ctr = 0;
 
 void simple_test(cxxopts::ParseResult& args)
 {

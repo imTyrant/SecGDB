@@ -30,7 +30,9 @@ bool Server::compare(const mpz_class& left, const mpz_class& right, int mode) co
     bool rtn;
     try
     {
+#ifndef SEC_GDB_WITHOUT_ENCRYPTION
         net_send_protocol_head(const_cast<boost::asio::ip::tcp::socket&>(this->sock), MPC_SECURE_COMPARSION);
+#endif
         rtn = (mode == secure_compare(const_cast<ProtocolDesc&>(this->pd), const_cast<JL_PK&>(this->pk.jl_pk), 
                         const_cast<mpz_class&>(left), const_cast<mpz_class&>(right), const_cast<boost::asio::ip::tcp::socket&>(this->sock)));
     }
@@ -49,7 +51,9 @@ mpz_class Server::multiply(mpz_class& left, mpz_class& right)
     mpz_class result;
     try
     {
+#ifndef SEC_GDB_WITHOUT_ENCRYPTION
         net_send_protocol_head(sock, MPC_SECURE_MULTIPLICATION);
+#endif
         result = secure_multiply(this->pk.jl_pk, left, right, sock);
     }
     catch(const sec_gdb_network_exception& e)
@@ -274,7 +278,7 @@ mpz_class Server::query_flow(string &F_1_s, string &P_s, string &P_t, Constrain 
     JL_encryption(this->pk, 0, c_qf);
 
     mpz_class inf;
-    JL_encryption(this->pk, INFIENITY, inf);
+    JL_encryption(this->pk, SEC_GDB_INF, inf);
 
     while(set_level(F_1_s, P_s, P_t, constrained_key, ctr))
     {
@@ -338,9 +342,9 @@ mpz_class Server::query_dist(std::string &F_1_s, std::string &P_s, std::string &
     {
         HEAP_ITEM hi = fh.top();
         fh.pop();
-        chosen_vertices.emplace(hi.vetex);
+        chosen_vertices.emplace(hi.vertex);
 
-        string &P_u = hi.vetex;
+        string &P_u = hi.vertex;
         if (P_u == P_t)
         {
             this->cache.emplace(cache_tmp, xi[P_u]);

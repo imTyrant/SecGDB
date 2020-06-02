@@ -145,7 +145,7 @@ bool sample_key(SK &sk, PK &pk)
     if (0 != bhjl_gen(sk.jl_sk.p.get_mpz_t(), pk.jl_pk.N.get_mpz_t(), pk.jl_pk.y.get_mpz_t(),
                         pk.jl_pk.k.get_mpz_t(), JL_MODULUS, SECURITY_LEVEL, rand_st))
     {
-        cout << "JL scheme initlization failed\n";
+        cout << "JL scheme initialization failed\n";
         return false;
     }
 
@@ -183,7 +183,7 @@ void pk_clear(PK &pk)
 }
 
 /**
- * A wrapped JL scheme encryption alogrithm.
+ * A wrapped JL scheme encryption algorithm.
  * Yeah... the last one is the return value.. History....
 */
 void JL_encryption(JL_PK &jl_pk, mpz_class &in, mpz_class &out)
@@ -233,7 +233,7 @@ void JL_encryption(PK &pk, size_t num, mpz_class &out)
 }
 
 /**
- * A wrapped JL scheme decryption alogrithm.
+ * A wrapped JL scheme decryption algorithm.
 */
 void JL_decryption(JL_SK &jl_sk, JL_PK &jl_pk, mpz_class &in, mpz_class &out)
 {

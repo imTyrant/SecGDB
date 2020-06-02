@@ -65,7 +65,7 @@ typedef struct _PATH_ITEM
 
 typedef struct _HEAP_ITEM
 {
-    std::string vetex;
+    std::string vertex;
     mpz_class distance;
 } HEAP_ITEM;
 

@@ -17,11 +17,11 @@ void log_error()
 }
 
 /*
- * Key extension fucntion.
- * Assume all the memeory has been alloced!
+ * Key extension function.
+ * Assume all the memory has been alloced!
  * 
  * Input: 
- *      [in]GGM* ggm: the init parametet.
+ *      [in]GGM* ggm: the init parameters.
  *      [in]char* in: a input key size.
  *      [out]char* out_left: return left part of extend keys;
  *      [out]char* out_right: return right part of extend keys;
@@ -136,10 +136,10 @@ void GFunction(GGM *ggm, char *in, char *out_left, char *out_right)
 }
 
 /*
- * The key extenstion function.
+ * The key extension function.
  * Input:
  *      [in]GGM* ggm: the init parameter.
- *      [in]char* key: the orignal key which used to extent the sub-key.
+ *      [in]char* key: the original key which used to extent the sub-key.
  *      [in]int x: the selector of sub-key, bit-0 for left, bit-1 for right.
  *      [in]int length: the left depth to be generate.
  *      [out]char* out: the final sub-key.
@@ -345,7 +345,7 @@ void derive_sub(GGM *ggm, char *key, char **dest, int depth)
 /**
  * Derive all of subkey from the give constrain.
  * Input:
- *      [in] GGM* ggm: the intial parameter of GGM.
+ *      [in] GGM* ggm: the initial parameter of GGM.
  *      [in] Constrain* constrain: the given constrain.
  *      [out] Subkeys* subkeys: a structure which is used to put
  *              all of subkeys.
