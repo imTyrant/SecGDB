@@ -145,7 +145,8 @@ void query_flow(cxxopts::ParseResult& args)
     tcp::socket sock(service);
 
     Server server(client.get_De(), client.get_pk(), sock, ep);
-    Request reqs = client.give_request("0", "5");
+    // Request reqs = client.give_request("0", "5");
+    Request reqs = client.give_request(args["start"].as<string>(), args["end"].as<string>());
 
     auto query_start = chrono::high_resolution_clock::now();
     mpz_class result_enc = server.query_flow(reqs.F_1_s, reqs.P_s, reqs.P_t, reqs.constrained_key, reqs.ctr);
@@ -187,8 +188,9 @@ void query_dist(cxxopts::ParseResult& args)
     tcp::socket sock(service);
 
     Server server(client.get_De(), client.get_pk(), sock, ep);
-    Request reqs = client.give_request("0", "8");
-
+    // Request reqs = client.give_request("0", "8");
+    Request reqs = client.give_request(args["start"].as<string>(), args["end"].as<string>());
+    
     auto query_start = chrono::high_resolution_clock::now();
     mpz_class result_enc = server.query_dist(reqs.F_1_s, reqs.P_s, reqs.P_t, reqs.constrained_key, reqs.ctr);
     auto query_end = chrono::high_resolution_clock::now();
@@ -227,7 +229,8 @@ void page_rank(cxxopts::ParseResult& args)
     Server server(client.get_De(), client.get_pk(), sock, ep);
 
     // Begin works
-    Request reqs = client.give_request("0", "1");
+    // Request reqs = client.give_request("0", "1");
+    Request reqs = client.give_request(args["start"].as<string>(), args["end"].as<string>());
 
     auto query_start = chrono::high_resolution_clock::now();
     auto result = server.page_rank(reqs.F_1_s, reqs.P_s, reqs.constrained_key, reqs.ctr, args["epoch"].as<int>());
@@ -301,6 +304,22 @@ void simple_server(cxxopts::ParseResult& args)
     }
 }
 
+
+mpz_class la_inv(mpz_class input)
+{
+    mpz_class rtn(2);
+    mpz_class base(1 << SCALE_SHIFT_P);
+    mpz_class two(1 << (SCALE_SHIFT_P + 1));
+    mpz_class tmp  = two - (rtn * input) / base;
+    cout << "TMP: " << tmp.get_str() << endl;
+    for (int i = 0; i < 4; i ++)
+    {
+        rtn = rtn * (two - (rtn * input / base)) / base;
+        cout << " " << rtn.get_str() << endl;
+    }
+    return rtn;
+}
+
 void simple_client(cxxopts::ParseResult& args)
 {
     string address = args["address"].as<string>();
@@ -329,30 +348,18 @@ void simple_client(cxxopts::ParseResult& args)
             cin >> input;
             size_t base = (1 << SCALE_SHIFT_P);
             size_t tmp = (size_t)(input * base);
-            
+
             mpz_class input_enc;
             JL_encryption(pk, tmp, input_enc);
 
             mpz_class out_enc = secure_inverse(pk.jl_pk, input_enc, sock, SCALE_SHIFT_P);
 
-            mpz_class mbase(base);  
-            mpz_class mtwo(2 * base);
-            mpz_class rtn(2);
-            mpz_class ii(tmp);
-            // long long rtn = 1;//(float(base) * 0.001);
-            // long long two = 2 * base;
-            // for (int i = 0; i < INVERSE_ITERS; i ++)
-            // {
-            //     // int tmp1 = rtn * tmp;
-            //     // int tmp2 = 2 * base - tmp1;
-            //     // rtn *= tmp2;
-            //     rtn = rtn * (mtwo - (rtn * ii / mbase)) / mbase;
-            // }
+            mpz_class la_res = la_inv(std::move(mpz_class(tmp)));
 
             mpz_class output;
             JL_decryption(sk, pk, out_enc, output);
-            
-            cout << output.get_str() << " " << rtn.get_str() << endl;
+
+            cout << output.get_str() << " " << la_res.get_str()  << endl;
             cout << float(output.get_ui()) / float(base) << " " << (1 / input) << endl;
 
         }
@@ -391,6 +398,8 @@ int main(int argc, char *argv[])
         ("party", "Specify current party", cxxopts::value<string>())
         ("epoch", "Epoch for the page rank", cxxopts::value<int>()->default_value("50"))
         ("scale", "Scale up graph weight", cxxopts::value<bool>()->default_value("false"))
+        ("start", "Start point", cxxopts::value<string>())
+        ("end", "End point", cxxopts::value<string>())
         ("h,help", "Print usage")
         ;
     try
