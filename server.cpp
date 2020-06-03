@@ -422,9 +422,8 @@ mpz_class Server::query_dist(std::string &F_1_s, std::string &P_s, std::string &
 }
 
 
-void normalize_graph_outedge_weight(tuple<Graph<mpz_class>, Graph<mpz_class>>& double_graph, Server& server)
+void Server::normalize_graph_outedge_weight(tuple<Graph<mpz_class>, Graph<mpz_class>>& double_graph)
 {
-    PK pk = server.get_pk();
     auto& graph = std::get<0>(double_graph);
     auto& reverse_graph = std::get<1>(double_graph);
     for (auto vit = graph.vertices.begin(); vit != graph.vertices.end(); vit ++)
@@ -441,8 +440,10 @@ void normalize_graph_outedge_weight(tuple<Graph<mpz_class>, Graph<mpz_class>>& d
 
         for (auto eit = graph.adjacency_list[vertex_info].begin(); eit != graph.adjacency_list[vertex_info].end(); eit ++)
         {
-            mpz_class new_weight;
-            // divide edge weight by weight sum
+            // Divide edge weight by weight sum
+            mpz_class sum_ivs = inverse(weight_sum);
+            mpz_class new_weight = multiply(eit->weight, sum_ivs);
+            // Update each edge
             graph.modify_edge(eit->src.name, eit->dest.name, new_weight);
             reverse_graph.modify_edge(eit->dest.name, eit->src.name, new_weight);
         }
@@ -505,12 +506,18 @@ void Server::unlock_graph(tuple<Graph<mpz_class>, Graph<mpz_class>>& double_grap
 
 void Server::page_rank(std::string &F_1_s, std::string &P_s, Constrain &constrained_key, size_t ctr, int epochs)
 {
+    size_t base = (1 << SCALE_SHIFT_P);
+    size_t long_d = (size_t)(float(base) * SEC_GDB_PAGE_RANK_D);
+    mpz_class raw_d(long_d), one_sub_d(base - long_d);
+    mpz_class enc_d, enc_1sd;
+    JL_encryption(this->pk.jl_pk, raw_d, enc_d);
+    JL_encryption(this->pk.jl_pk, one_sub_d, enc_1sd);
 
     auto double_graph = std::make_tuple(Graph<mpz_class>(), Graph<mpz_class>());
     unlock_graph(double_graph, F_1_s, P_s, constrained_key, ctr);
+    normalize_graph_outedge_weight(double_graph);
     Graph<mpz_class>& graph = std::get<0>(double_graph); // graph for out edges
     Graph<mpz_class>& reverse_graph = std::get<1>(double_graph); // graph for in edges
-    normalize_graph_outedge_weight (double_graph, *this);
 
     unordered_map<Vertex, mpz_class> PR_list;
     for (auto it = graph.vertices.begin(); it != graph.vertices.end(); it ++)
@@ -528,13 +535,11 @@ void Server::page_rank(std::string &F_1_s, std::string &P_s, Constrain &constrai
             auto& vertex = it->first;
             for (auto adj_it = reverse_graph.adjacency_list[vertex].begin(); adj_it != reverse_graph.adjacency_list[vertex].end(); adj_it ++)
             {
-                mpz_class mul;
-                // secure multiple
-                // mul = this->multiply();
+                mpz_class mul = multiply(PR_list[adj_it->dest], adj_it->weight);
                 pr_value = JL_homo_add(this->pk, pr_value, mul);
             }
-            // pr_value = JL_homo_mul(this->pk, pr_value, d);
-            // pr_value = JL_homo_add(this->pk, pr_value, 1-d);
+            pr_value = JL_homo_mul(this->pk, pr_value, raw_d);
+            pr_value = JL_homo_add(this->pk, pr_value, enc_1sd);
         }
     }
 }

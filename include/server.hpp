@@ -158,6 +158,9 @@ private:
     // Contact with proxy for getting sub keys of GGM
     int contact_and_get_ggm_sub_key(GGM& ggm, Subkeys& sub_key, std::string& P_t);
 
+    // Divides each out edge weight by their sum
+    void normalize_graph_outedge_weight(std::tuple<Graph<mpz_class>, Graph<mpz_class>>& double_graph);
+
     // Contact with proxy for comparing two encryption value
     bool compare(const mpz_class& left, const mpz_class& right, int mode) const;
 

@@ -29,6 +29,8 @@ extern "C"
 
 #define INVERSE_ITERS 40
 
+#define SEC_GDB_PAGE_RANK_D 0.85
+
 typedef unsigned char BYTE;
 
 // #define SEC_GDB_SIMPLE_MODE
