@@ -37,7 +37,7 @@ typedef unsigned char BYTE;
 
 // #define SEC_GDB_WITHOUT_ENCRYPTION
 
-#define F_FUNCTION_DISABLE
+// #define F_FUNCTION_DISABLE
 
 #define MAX_EDGE_WEIGHT 10000
 #define SEC_GDB_INF 1000000
