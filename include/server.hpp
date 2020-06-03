@@ -187,7 +187,7 @@ public:
     mpz_class augment_path(std::string &F_1_u, std::string &P_u, std::string &P_t, Constrain &constrain, size_t ctr, mpz_class gamma);
     mpz_class query_flow(std::string &F_1_s, std::string &P_s, std::string &P_t, Constrain &constrained_key, size_t ctr);
     mpz_class query_dist(std::string &F_1_s, std::string &P_s, std::string &P_t, Constrain &constrained_key, size_t ctr);
-    void page_rank(std::string &F_1_s, std::string &P_s, Constrain &constrained_key, size_t ctr , int epochs);
+    std::unordered_map<Vertex, mpz_class> page_rank(std::string &F_1_s, std::string &P_s, Constrain &constrained_key, size_t ctr , int epochs);
     void unlock_graph(std::tuple<Graph<mpz_class>, Graph<mpz_class>>& double_graph, std::string& F_1_s, std::string& P_s, Constrain& constrained_key, size_t ctr);
 };
 

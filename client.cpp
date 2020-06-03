@@ -176,9 +176,11 @@ Request Client::give_request(std::string src, std::string dest)
     return rtn;
 }
 
-void Client::enc_graph(const string &file_path)
+void Client::enc_graph(const string &file_path, int scaler)
 {
     build_graph(this->graph, file_path);
+
+    size_t base = 1 << scaler;
 
     for (auto v : this->graph.vertices)
     {
@@ -229,7 +231,9 @@ void Client::enc_graph(const string &file_path)
             //Firstly, encrypt the weight of the each edge of the vertex v.
             E_ITEM data_tmp;
 
-            JL_encryption(this->pk, e.weight, data_tmp.weight); 
+            size_t weight_scaler = (size_t)(float(e.weight) * float(base));
+
+            JL_encryption(this->pk, weight_scaler, data_tmp.weight);
 
             unsigned char F_1_v[KEY_SIZE];
             unsigned char P_v[KEY_SIZE];

@@ -108,8 +108,15 @@ void enc_graph(cxxopts::ParseResult& args)
     fs::path outdir(args["outdir"].as<string>());
 
     Client client;
+
+    int scaler=0;
+    if (args["scale"].as<bool>())
+    {
+        scaler = SCALE_SHIFT_P;
+    }
+
     auto enc_start = chrono::high_resolution_clock::now();
-    client.enc_graph(args["infile"].as<string>());
+    client.enc_graph(args["infile"].as<string>(), scaler);
     auto enc_end = chrono::high_resolution_clock::now();
 
     cout << chrono::duration<double>(enc_end-enc_start).count() << endl;
@@ -191,6 +198,52 @@ void query_dist(cxxopts::ParseResult& args)
     mpz_class enc;
     JL_decryption(client.get_sk(), client.get_pk(), result_enc, enc);
     cout << "The final result is: " << enc.get_str() << endl;
+}
+
+void page_rank(cxxopts::ParseResult& args)
+{
+    fs::path outdir(args["outdir"].as<string>());
+
+    // Prepare for global parameters
+    init_dbg_client(outdir.string().c_str());
+    init_global_key(outdir.string().c_str());
+
+    // Client
+    Client client;
+    client.read_pk((outdir.remove_trailing_separator() / "pk.json").string());
+    client.read_sk((outdir.remove_trailing_separator() / "sk.json").string());
+
+    int scaler=0;
+    if (args["scale"].as<bool>())
+    {
+        scaler = SCALE_SHIFT_P;
+    }
+    client.enc_graph(args["infile"].as<string>(), scaler);
+
+    // Server
+    asio::io_service service;
+    tcp::endpoint ep(asio::ip::address::from_string(args["address"].as<string>()), args["port"].as<short>());
+    tcp::socket sock(service);
+    Server server(client.get_De(), client.get_pk(), sock, ep);
+
+    // Begin works
+    Request reqs = client.give_request("0", "1");
+
+    auto query_start = chrono::high_resolution_clock::now();
+    auto result = server.page_rank(reqs.F_1_s, reqs.P_s, reqs.constrained_key, reqs.ctr, args["epoch"].as<int>());
+    auto query_end = chrono::high_resolution_clock::now();
+
+    cout << chrono::duration<double>(query_end - query_start).count() << endl;
+
+    size_t base = 1 << scaler;
+    for (auto it = client.get_graph().vertices.begin(); it != client.get_graph().vertices.end(); it ++)
+    {
+        mpz_class weight;
+        JL_decryption(client.get_sk(), client.get_pk(), result[it->second], weight);
+
+        cout << "V: " << it->first
+             << " pr: " << float(weight.get_ui()) / float(base) << endl;
+    }
 }
 
 void start_proxy(cxxopts::ParseResult& args)
@@ -282,7 +335,7 @@ void simple_client(cxxopts::ParseResult& args)
 
             mpz_class out_enc = secure_inverse(pk.jl_pk, input_enc, sock, SCALE_SHIFT_P);
 
-            mpz_class mbase(base);
+            mpz_class mbase(base);  
             mpz_class mtwo(2 * base);
             mpz_class rtn(2);
             mpz_class ii(tmp);
@@ -320,7 +373,8 @@ unordered_map<string, void (*) (cxxopts::ParseResult&)> Experiments({
     {"enc_graph", enc_graph},
     {"start_proxy", start_proxy},
     {"query_dist", query_dist},
-    {"query_flow", query_flow}
+    {"query_flow", query_flow},
+    {"page_rank", page_rank}
 });
 
 /* Main */
@@ -332,9 +386,11 @@ int main(int argc, char *argv[])
         ("i,infile", "Input graph file", cxxopts::value<string>())
         ("o,outdir", "Directory where data to be saved", cxxopts::value<string>())
         ("l,log", "File for experiment results", cxxopts::value<string>()->default_value("./result.json"))
-        ("party", "Specify current party", cxxopts::value<string>())
         ("a,address", "IP address for the proxy", cxxopts::value<string>()->default_value("127.0.0.1"))
         ("p,port", "Port for the proxy", cxxopts::value<short>()->default_value("23333"))
+        ("party", "Specify current party", cxxopts::value<string>())
+        ("epoch", "Epoch for the page rank", cxxopts::value<int>()->default_value("50"))
+        ("scale", "Scale up graph weight", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print usage")
         ;
     try

@@ -504,7 +504,7 @@ void Server::unlock_graph(tuple<Graph<mpz_class>, Graph<mpz_class>>& double_grap
     }
 }
 
-void Server::page_rank(std::string &F_1_s, std::string &P_s, Constrain &constrained_key, size_t ctr, int epochs)
+unordered_map<Vertex, mpz_class> Server::page_rank(std::string &F_1_s, std::string &P_s, Constrain &constrained_key, size_t ctr, int epochs)
 {
     size_t base = (1 << SCALE_SHIFT_P);
     size_t long_d = (size_t)(float(base) * SEC_GDB_PAGE_RANK_D);
@@ -542,6 +542,7 @@ void Server::page_rank(std::string &F_1_s, std::string &P_s, Constrain &constrai
             pr_value = JL_homo_add(this->pk, pr_value, enc_1sd);
         }
     }
+    return PR_list;
 }
 
 void Server::network_init()

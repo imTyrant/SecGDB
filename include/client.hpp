@@ -40,7 +40,7 @@ class Client
     ~Client();
 
     void keygen();
-    void enc_graph(const std::string &file_path);
+    void enc_graph(const std::string &file_path, int scaler=0);
     Request give_request(std::string src, std::string dest);
     void update_graph(const std::string &src, const std::string &dest, const size_t weight, int op);
 
