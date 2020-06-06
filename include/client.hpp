@@ -35,6 +35,9 @@ class Client
     // Uhn... the key just is the name of vertex, just output is with cout.
     std::unordered_map<std::string, V_ITEM> D_cv; 
 
+    // Mapping v name to P_v
+    std::unordered_map<std::string, std::string> D_v2p;
+
   public:
     Client();
     ~Client();
@@ -87,6 +90,8 @@ class Client
     inline const std::unordered_map<std::string, V_ITEM> &get_Dcv() const { return this->D_cv; }
 
     inline void set_Dcv(std::unordered_map<std::string, V_ITEM> &&Dcv) { this->D_cv = std::forward<std::unordered_map<std::string, V_ITEM>>(D_cv); }
+
+    inline const std::unordered_map<std::string, std::string> &get_Dv2p() const { return this->D_v2p; }
 };
 
 #ifdef SEC_GDB_DBG

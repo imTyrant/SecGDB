@@ -201,6 +201,7 @@ void Client::enc_graph(const string &file_path, int scaler)
 
         this->D_cv[v.second.name] = V_ITEM{ctr, string((char*)F_2_u, KEY_SIZE)};
         this->D_pv[string((char*)P_u, KEY_SIZE)] = V_ITEM{ctr, string((char*)F_2_u, KEY_SIZE)};
+        this->D_v2p[v.second.name] = string((char*)P_u, KEY_SIZE);
 
         // The following operations should be done under the condition 
         // that current vertex out degree is not 0, so we have to check v's out degree.
@@ -282,7 +283,7 @@ void Client::enc_graph(const string &file_path, int scaler)
 
 
 
-Client::Client() : graph(), D_pv(), D_e(), D_cv()
+Client::Client() : graph(), D_pv(), D_e(), D_cv(), D_v2p()
 {
     sample_key(this->sk, this->pk);
 }

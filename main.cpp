@@ -233,7 +233,7 @@ void page_rank(cxxopts::ParseResult& args)
     Request reqs = client.give_request(args["start"].as<string>(), args["end"].as<string>());
 
     auto query_start = chrono::high_resolution_clock::now();
-    auto result = server.page_rank(reqs.F_1_s, reqs.P_s, reqs.constrained_key, reqs.ctr, args["epoch"].as<int>());
+    auto pr_result = server.page_rank(reqs.F_1_s, reqs.P_s, reqs.constrained_key, reqs.ctr, args["epoch"].as<int>());
     auto query_end = chrono::high_resolution_clock::now();
 
     cout << chrono::duration<double>(query_end - query_start).count() << endl;
@@ -242,10 +242,12 @@ void page_rank(cxxopts::ParseResult& args)
     for (auto it = client.get_graph().vertices.begin(); it != client.get_graph().vertices.end(); it ++)
     {
         mpz_class weight;
-        JL_decryption(client.get_sk(), client.get_pk(), result[it->second], weight);
 
-        cout << "V: " << it->first
-             << " pr: " << float(weight.get_ui()) / float(base) << endl;
+        Vertex vr = {client.get_Dv2p().at(it->second.name), it->second.in_degree, it->second.out_degree};
+        JL_decryption(client.get_sk(), client.get_pk(), pr_result.at(vr), weight);
+
+        cout << "V: " << it->first << " Dec " << weight.get_str() 
+             << " pr: " << float(weight.get_ui()) / float(1 << SCALE_SHIFT_P) << endl;
     }
 }
 

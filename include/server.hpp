@@ -165,7 +165,7 @@ private:
     bool compare(const mpz_class& left, const mpz_class& right, int mode) const;
 
     // Contact with proxy for multiplying two encryption value
-    mpz_class multiply (mpz_class& left, mpz_class& right);
+    mpz_class multiply (mpz_class& left, mpz_class& right, int scaler=0);
 
     // Contact with proxy for calc inverse
     mpz_class inverse(mpz_class& input);

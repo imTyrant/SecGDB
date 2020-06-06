@@ -46,7 +46,7 @@ bool Server::compare(const mpz_class& left, const mpz_class& right, int mode) co
     return rtn;
 }
 
-mpz_class Server::multiply(mpz_class& left, mpz_class& right)
+mpz_class Server::multiply(mpz_class& left, mpz_class& right, int scaler)
 {
     mpz_class result;
     try
@@ -54,7 +54,7 @@ mpz_class Server::multiply(mpz_class& left, mpz_class& right)
 #ifndef SEC_GDB_WITHOUT_ENCRYPTION
         net_send_protocol_head(sock, MPC_SECURE_MULTIPLICATION);
 #endif
-        result = secure_multiply(this->pk.jl_pk, left, right, sock);
+        result = secure_multiply(this->pk.jl_pk, left, right, sock, scaler);
     }
     catch(const sec_gdb_network_exception& e)
     {
@@ -421,6 +421,15 @@ mpz_class Server::query_dist(std::string &F_1_s, std::string &P_s, std::string &
     return c_qd;
 }
 
+void print_fix_point(mpz_class & in)
+{
+#ifdef SEC_GDB_DBG
+    mpz_class base(1 << SCALE_SHIFT_P);
+    mpz_class dec, real;
+    JL_decryption(g_sk, g_pk, in, dec);
+    cout << "Dec: " << dec.get_str() << " Real: " << float(dec.get_ui()) / float(1 << SCALE_SHIFT_P) << endl;
+#endif
+}
 
 void Server::normalize_graph_outedge_weight(tuple<Graph<mpz_class>, Graph<mpz_class>>& double_graph)
 {
@@ -442,7 +451,7 @@ void Server::normalize_graph_outedge_weight(tuple<Graph<mpz_class>, Graph<mpz_cl
         {
             // Divide edge weight by weight sum
             mpz_class sum_ivs = inverse(weight_sum);
-            mpz_class new_weight = multiply(eit->weight, sum_ivs);
+            mpz_class new_weight = multiply(eit->weight, sum_ivs, SCALE_SHIFT_P);
             // Update each edge
             graph.modify_edge(eit->src.name, eit->dest.name, new_weight);
             reverse_graph.modify_edge(eit->dest.name, eit->src.name, new_weight);
@@ -523,7 +532,7 @@ unordered_map<Vertex, mpz_class> Server::page_rank(std::string &F_1_s, std::stri
     for (auto it = graph.vertices.begin(); it != graph.vertices.end(); it ++)
     {
         mpz_class one;
-        JL_encryption(this->pk, 1, one);
+        JL_encryption(this->pk, 1 << SCALE_SHIFT_P, one);
         PR_list[it->second] = one;
     }
 
@@ -533,13 +542,18 @@ unordered_map<Vertex, mpz_class> Server::page_rank(std::string &F_1_s, std::stri
         {
             auto& pr_value = it->second;
             auto& vertex = it->first;
+            mpz_class sum;
+            JL_encryption(this->pk, 0, sum);
             for (auto adj_it = reverse_graph.adjacency_list[vertex].begin(); adj_it != reverse_graph.adjacency_list[vertex].end(); adj_it ++)
             {
-                mpz_class mul = multiply(PR_list[adj_it->dest], adj_it->weight);
-                pr_value = JL_homo_add(this->pk, pr_value, mul);
+                mpz_class mul = multiply(PR_list[adj_it->dest], adj_it->weight, SCALE_SHIFT_P);
+                sum = JL_homo_add(this->pk, sum, mul);
             }
-            pr_value = JL_homo_mul(this->pk, pr_value, raw_d);
+            pr_value = sum;
+            cout << "XXXX: "; print_fix_point(pr_value);
+            pr_value = multiply(pr_value, enc_d, SCALE_SHIFT_P);
             pr_value = JL_homo_add(this->pk, pr_value, enc_1sd);
+            cout << "HHHH: "; print_fix_point(pr_value);
         }
     }
     return PR_list;
