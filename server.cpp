@@ -550,10 +550,8 @@ unordered_map<Vertex, mpz_class> Server::page_rank(std::string &F_1_s, std::stri
                 sum = JL_homo_add(this->pk, sum, mul);
             }
             pr_value = sum;
-            cout << "XXXX: "; print_fix_point(pr_value);
             pr_value = multiply(pr_value, enc_d, SCALE_SHIFT_P);
             pr_value = JL_homo_add(this->pk, pr_value, enc_1sd);
-            cout << "HHHH: "; print_fix_point(pr_value);
         }
     }
     return PR_list;
