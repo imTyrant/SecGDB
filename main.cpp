@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_map>
 #include <thread>
+#include <random>
 
 #include <boost/filesystem.hpp>
 #include "cxxopts.hpp"
@@ -374,6 +375,70 @@ void simple_client(cxxopts::ParseResult& args)
     cout << "Quiting.." << endl;
 }
 
+void eval_ggm(cxxopts::ParseResult& args)
+{
+    // Prepare outdir
+    fs::path outdir(args["outdir"].as<string>());
+    outdir /= "ggm.json";
+    if (!fs::exists(outdir))
+    {
+        fs::create_directories(outdir.parent_path());
+    }
+
+    ofstream os(outdir.string(), ofstream::out);
+
+    // JSON stuff
+    nlohmann::json j;
+
+
+    // Init random source
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
+    uniform_int_distribution<int> distribution(0, 1 << MAX_GGM_DEPTH);
+    auto dice = std::bind(distribution, generator);
+
+    for (int i = 0; i < args["round"].as<int>(); i ++)
+    {
+        // Generate random number 
+        int rn = dice();
+        // A random key
+        char key[KEY_SIZE] = {0};
+
+        // Prepare GGM
+        GGM ggm = {KEY_SIZE, MAX_GGM_DEPTH};
+        Constrain con;
+        Subkeys sks;
+        auto start =  chrono::high_resolution_clock::now();
+        ggm_find_best_range_cover(&ggm, key, 0, rn, &con);
+        auto constrain = chrono::high_resolution_clock::now();
+        ggm_derive(&ggm, &con, &sks);
+        auto derive = chrono::high_resolution_clock::now();
+
+        ggm_free_keys(&sks);
+        ggm_free_constrain(&con);
+        
+        auto con_time = chrono::duration<float>(constrain - start).count() * 1000;
+        auto drv_time = chrono::duration<float>(derive - constrain).count() / rn * 1000;
+
+        cout << "Range: 0-" << rn << " Con time: " << con_time << " Derive time: " << drv_time << endl;
+        j["exps"].push_back({{"Con", con_time}, {"Drv", drv_time}, {"Range", rn}});
+    }
+
+    float con_avg = 0.0;
+    float drv_avg = 0.0;
+    for (auto each : j["exps"])
+    {
+        con_avg += each["Con"].get<float>();
+        drv_avg += each["Drv"].get<float>();
+    }
+
+    j["con_avg"] = con_avg / args["round"].as<int>();
+    j["drv_avg"] = drv_avg / args["round"].as<int>();
+
+    os << j.dump() << endl;
+    os.close();
+}
+
 /* Experiments regester. */
 unordered_map<string, void (*) (cxxopts::ParseResult&)> Experiments({
     {"simple_client", simple_client},
@@ -383,7 +448,8 @@ unordered_map<string, void (*) (cxxopts::ParseResult&)> Experiments({
     {"start_proxy", start_proxy},
     {"query_dist", query_dist},
     {"query_flow", query_flow},
-    {"page_rank", page_rank}
+    {"page_rank", page_rank},
+    {"eval_ggm", eval_ggm}
 });
 
 /* Main */
@@ -397,6 +463,7 @@ int main(int argc, char *argv[])
         ("l,log", "File for experiment results", cxxopts::value<string>()->default_value("./result.json"))
         ("a,address", "IP address for the proxy", cxxopts::value<string>()->default_value("127.0.0.1"))
         ("p,port", "Port for the proxy", cxxopts::value<short>()->default_value("23333"))
+        ("round", "Round for experiments", cxxopts::value<int>()->default_value("10"))
         ("party", "Specify current party", cxxopts::value<string>())
         ("epoch", "Epoch for the page rank", cxxopts::value<int>()->default_value("50"))
         ("scale", "Scale up graph weight", cxxopts::value<bool>()->default_value("false"))
