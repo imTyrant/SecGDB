@@ -281,8 +281,8 @@ void simple_server(cxxopts::ParseResult& args)
     PK pk;
     SK sk;
 
-    load_pk(string("exp1/pk.json"), pk);
-    load_sk(string("exp1/sk.json"), sk);
+    load_pk(string("benchmark/exp1/pk.json"), pk);
+    load_sk(string("benchmark/exp1/sk.json"), sk);
     for(;;)
     {
         boost::asio::ip::tcp::socket clt(service);
@@ -294,7 +294,9 @@ void simple_server(cxxopts::ParseResult& args)
             try
             {
                 // secure_multiply_remote(pk.jl_pk, sk.jl_sk, clt);
-                secure_inverse_remote(pk.jl_pk, sk.jl_sk, clt);
+                // secure_inverse_remote(pk.jl_pk, sk.jl_sk, clt);
+                ProtocolDesc pd = {0};
+                secure_compare_remote(pd, pk.jl_pk, sk.jl_sk, clt);
             }
             catch(const std::exception& e)
             {
@@ -306,7 +308,6 @@ void simple_server(cxxopts::ParseResult& args)
         clt.close();
     }
 }
-
 
 mpz_class la_inv(mpz_class input)
 {
@@ -323,22 +324,13 @@ mpz_class la_inv(mpz_class input)
     return rtn;
 }
 
-void simple_client(cxxopts::ParseResult& args)
+void client_work_test_multiply(boost::asio::ip::tcp::socket& sock, cxxopts::ParseResult& args)
 {
-    string address = args["address"].as<string>();
-    short port = args["port"].as<short>();
-    cout << "I'm client.." << endl;
-    boost::asio::io_service service;
-    boost::asio::ip::tcp::socket sock(service);
-    boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string(address), port);
-    sock.connect(ep);
-    sock.set_option(boost::asio::ip::tcp::no_delay(true));
-
     PK pk;
     SK sk;
 
-    load_pk(string("exp1/pk.json"), pk);
-    load_sk(string("exp1/sk.json"), sk);
+    load_pk(string("benchmark/exp1/pk.json"), pk);
+    load_sk(string("benchmark/exp1/sk.json"), sk);
 
     init_global_key("exp1");
 
@@ -372,6 +364,95 @@ void simple_client(cxxopts::ParseResult& args)
             break;
         }
     }
+    
+}
+
+void client_work_test_compare(boost::asio::ip::tcp::socket& sock, cxxopts::ParseResult& args)
+{
+    // Prepare key pair
+    PK pk;
+    SK sk;
+    load_pk(string("benchmark/exp1/pk.json"), pk);
+    load_sk(string("benchmark/exp1/sk.json"), sk);
+
+    // Prepare outdir
+    fs::path outdir(args["outdir"].as<string>());
+    outdir /= "single_compare.json";
+    if (!fs::exists(outdir))
+    {
+        fs::create_directories(outdir.parent_path());
+    }
+
+    ofstream os(outdir.string(), ofstream::out);
+
+    // JSON stuff
+    nlohmann::json j;
+
+    // Init random source
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
+    uniform_int_distribution<int> distribution(0, 1 << 16);
+    auto dice = std::bind(distribution, generator);
+    
+
+    ProtocolDesc pd = {0};
+    for (int i = 0; i < args["round"].as<int>(); i ++)
+    {
+        try
+        {
+            int nl = dice();
+            int nr = dice();
+            mpz_class left(nl), right(nr);
+            mpz_class enc_left, enc_right;
+            JL_encryption(pk.jl_pk, left, enc_left);
+            JL_encryption(pk.jl_pk, right, enc_right);
+            auto start = chrono::high_resolution_clock::now();
+            int result = secure_compare(pd, pk.jl_pk, enc_left, enc_right, sock);
+            auto end = chrono::high_resolution_clock::now();
+            // usleep(500);
+            auto cmp_time = chrono::duration<float>(end - start).count() * 1000;
+            cout << "left: " << nl << " right: " << nr << " result: " << result  << " time: " << cmp_time << endl;
+
+            j["exps"].push_back({
+                {"left", nl},
+                {"right", nr},
+                {"result", result},
+                {"time", cmp_time}
+            });
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+            return;
+        }
+    }
+
+    auto avg_time = 0.0;
+    for (auto item : j["exps"])
+    {
+        avg_time += item["time"].get<float>();
+    }
+
+    j["avg_time"] = avg_time / args["round"].as<int>();
+
+    os << j.dump() << endl;
+    os.close();
+}
+
+void simple_client(cxxopts::ParseResult& args)
+{
+    string address = args["address"].as<string>();
+    short port = args["port"].as<short>();
+    cout << "I'm client.." << endl;
+    boost::asio::io_service service;
+    boost::asio::ip::tcp::socket sock(service);
+    boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string(address), port);
+    sock.connect(ep);
+    sock.set_option(boost::asio::ip::tcp::no_delay(true));
+
+    // client_work_test_multiply(sock, args);
+    client_work_test_compare(sock, args);
+    
     cout << "Quiting.." << endl;
 }
 
@@ -440,7 +521,7 @@ void eval_ggm(cxxopts::ParseResult& args)
 }
 
 /* Experiments regester. */
-unordered_map<string, void (*) (cxxopts::ParseResult&)> Experiments({
+map<string, void (*) (cxxopts::ParseResult&)> Experiments({
     {"simple_client", simple_client},
     {"simple_server", simple_server},
     {"simple_test", simple_test},
@@ -451,6 +532,15 @@ unordered_map<string, void (*) (cxxopts::ParseResult&)> Experiments({
     {"page_rank", page_rank},
     {"eval_ggm", eval_ggm}
 });
+
+void print_exps()
+{
+    cout << "Experiments:\n";
+    for (auto item : Experiments)
+    {
+        cout << "- " << item.first << "\n";
+    }
+}
 
 /* Main */
 int main(int argc, char *argv[])
@@ -480,10 +570,21 @@ int main(int argc, char *argv[])
             return EXIT_SUCCESS;
         }
 
+        if (args.count("exp") == 0)
+        {
+            cout << "Name an experiment (-e | --exp):\n";
+            print_exps();
+            return EXIT_SUCCESS;
+        }
         const string& exp = args["exp"].as<string>();
         if (Experiments.find(exp) != Experiments.end())
         {
             Experiments[exp](args);
+        }
+        else
+        {
+            cout << "Unrecognized experiment name.\n";
+            print_exps();
         }
     }
     catch(const cxxopts::OptionException& e)
