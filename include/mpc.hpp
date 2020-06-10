@@ -36,4 +36,7 @@ extern double g_mul_time_cost;
 extern size_t g_ivs_counter;
 extern double g_ivs_time_cost;
 
+extern double g_mul_comm_time;
+extern double g_cmp_comm_time;
+
 #endif // SEC_GDB_H_MPC

@@ -77,14 +77,20 @@ void secure_compare_remote(ProtocolDesc& pd, JL_PK& pk, JL_SK& sk, tcp::socket& 
     OBLIVC_IO io = {0};
     io.a_1 = unblinded_left.get_si();
     io.a_2 = unblinded_right.get_si();
+
+#ifdef SEC_GDB_DBG
     log_dbg_fmt("a1 %s a2 %s\n", unblinded_left.get_str().c_str(),  unblinded_right.get_str().c_str());
+#endif // SEC_GDB_DBG
 
     ProtocolDesc ppd = {0};
     protocolUseTcp2PKeepAlive(&ppd, sock.native_handle(), false);
     setCurrentParty(&ppd, SEC_GDB_OBLIVC_PROXY);
     execYaoProtocol(&ppd, compare, &io);
     cleanupProtocol(&ppd);
+
+#ifdef SEC_GDB_DBG
     log_dbg_fmt("Result %d\n", io.result);
+#endif // SEC_GDB_DBG
 }
 
 int secure_compare(ProtocolDesc& pd, JL_PK& jl_pk, mpz_class& left, mpz_class& right, tcp::socket& sock)
@@ -116,13 +122,18 @@ int secure_compare(ProtocolDesc& pd, JL_PK& jl_pk, mpz_class& left, mpz_class& r
     mpz_class blinded_right = JL_homo_add(jl_pk, right, r_right_enc);
 
     // Send data through socket
+    auto comm_start = chrono::high_resolution_clock::now();
     net_send_mpz_class(sock, blinded_left);
     net_send_mpz_class(sock, blinded_right);
+    auto comm_end = chrono::high_resolution_clock::now();
+    g_cmp_comm_time += chrono::duration<double>(comm_end - comm_start).count();
 
     OBLIVC_IO io = {0};
     io.r_1 = r_left.get_si();
     io.r_2 = r_right.get_si();
+#ifdef SEC_GDB_DBG
     log_dbg_fmt("r1: %s r2: \n", r_left.get_str().c_str(), r_right.get_str().c_str());
+#endif // SEC_GDB_DBG
 
     ProtocolDesc ppd = {0};
     protocolUseTcp2PKeepAlive(&ppd, sock.native_handle(), true);
@@ -131,7 +142,10 @@ int secure_compare(ProtocolDesc& pd, JL_PK& jl_pk, mpz_class& left, mpz_class& r
     cleanupProtocol(&ppd);
 
     result = io.result;
+#ifdef SEC_GDB_DBG
     log_dbg_fmt("Result %d\n", io.result);
+#endif // SEC_GDB_DBG
+
 #endif //SEC_GDB_WITHOUT_ENCRYPTION
     auto end_time = std::chrono::high_resolution_clock::now();
     g_compare_time_cost += std::chrono::duration<double>(end_time - start_time).count();
@@ -274,3 +288,7 @@ mpz_class secure_inverse(JL_PK& jl_pk, mpz_class& input, tcp::socket& sock, int 
     g_ivs_time_cost += std::chrono::duration<double>(end - start).count();
     return rtn;
 }
+
+
+double g_mul_comm_time = 0.0;
+double g_cmp_comm_time = 0.0;

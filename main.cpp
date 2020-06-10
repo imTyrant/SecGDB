@@ -409,8 +409,8 @@ void client_work_test_compare(boost::asio::ip::tcp::socket& sock, cxxopts::Parse
             auto start = chrono::high_resolution_clock::now();
             int result = secure_compare(pd, pk.jl_pk, enc_left, enc_right, sock);
             auto end = chrono::high_resolution_clock::now();
-            // usleep(500);
-            auto cmp_time = chrono::duration<float>(end - start).count() * 1000;
+            usleep(500);
+            auto cmp_time = chrono::duration<double>(end - start).count();
             cout << "left: " << nl << " right: " << nr << " result: " << result  << " time: " << cmp_time << endl;
 
             j["exps"].push_back({
@@ -427,13 +427,15 @@ void client_work_test_compare(boost::asio::ip::tcp::socket& sock, cxxopts::Parse
         }
     }
 
-    auto avg_time = 0.0;
+    double avg_time = 0.0;
     for (auto item : j["exps"])
     {
-        avg_time += item["time"].get<float>();
+        avg_time += item["time"].get<double>();
     }
 
     j["avg_time"] = avg_time / args["round"].as<int>();
+    j["avg_comm_time"] = g_cmp_comm_time / args["round"].as<int>();
+    j["avg_cmp_time"] = (avg_time - g_cmp_comm_time) / args["round"].as<int>();
 
     os << j.dump() << endl;
     os.close();
@@ -498,19 +500,19 @@ void eval_ggm(cxxopts::ParseResult& args)
         ggm_free_keys(&sks);
         ggm_free_constrain(&con);
         
-        auto con_time = chrono::duration<float>(constrain - start).count() * 1000;
-        auto drv_time = chrono::duration<float>(derive - constrain).count() / rn * 1000;
+        auto con_time = chrono::duration<double>(constrain - start).count() * 1000;
+        auto drv_time = chrono::duration<double>(derive - constrain).count() / rn * 1000;
 
         cout << "Range: 0-" << rn << " Con time: " << con_time << " Derive time: " << drv_time << endl;
         j["exps"].push_back({{"Con", con_time}, {"Drv", drv_time}, {"Range", rn}});
     }
 
-    float con_avg = 0.0;
-    float drv_avg = 0.0;
+    double con_avg = 0.0;
+    double drv_avg = 0.0;
     for (auto each : j["exps"])
     {
-        con_avg += each["Con"].get<float>();
-        drv_avg += each["Drv"].get<float>();
+        con_avg += each["Con"].get<double>();
+        drv_avg += each["Drv"].get<double>();
     }
 
     j["con_avg"] = con_avg / args["round"].as<int>();
