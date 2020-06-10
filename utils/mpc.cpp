@@ -3,6 +3,7 @@
 #include <gmpxx.h>
 #include <chrono>
 #include <boost/asio.hpp>
+#include <cassert>
 
 #include "global.h"
 #include "mpc.hpp"
@@ -150,6 +151,109 @@ int secure_compare(ProtocolDesc& pd, JL_PK& jl_pk, mpz_class& left, mpz_class& r
     auto end_time = std::chrono::high_resolution_clock::now();
     g_compare_time_cost += std::chrono::duration<double>(end_time - start_time).count();
     return result;
+}
+
+void secure_compare_batch_remote(JL_PK& jl_pk, JL_SK& jl_sk, tcp::socket& sock)
+{
+    // Assume two element batch
+    int bn = 2;
+
+    mpz_class shifter(1L << (sizeof(OBLIVC_DATA_TYPE) * 8L));
+    mpz_class blinded_left, blinded_right, left, right;
+
+    boost::system::error_code ec;
+    boost::asio::read(sock, boost::asio::buffer(reinterpret_cast<char*>(&bn), sizeof(bn)), ec);
+
+    net_recv_mpz_class(sock, blinded_left);
+    net_recv_mpz_class(sock, blinded_right);
+
+    JL_decryption(jl_sk, jl_pk, blinded_left, left);
+    JL_decryption(jl_sk, jl_pk, blinded_right, right);
+
+    ProtocolDesc pd = {0};
+    protocolUseTcp2PKeepAlive(&pd, sock.native_handle(), false);
+
+    for (int i = 0; i < bn; i ++)
+    {
+        OBLIVC_IO io = {0};
+
+        mpz_class tmp_left, tmp_right;
+        tmp_left = left % shifter;
+        tmp_right = right % shifter;
+
+        left >>= (sizeof(OBLIVC_DATA_TYPE) * 8L);
+        right >>= (sizeof(OBLIVC_DATA_TYPE) * 8L);
+
+        io.a_1 = tmp_left.get_si();
+        io.a_2 = tmp_right.get_si();
+        setCurrentParty(&pd, SEC_GDB_OBLIVC_PROXY);
+        execYaoProtocol(&pd, compare, &io);
+    }
+    cleanupProtocol(&pd);
+}
+
+vector<int> secure_compare_batch(JL_PK& jl_pk, vector<mpz_class>& left, vector<mpz_class>& right, tcp::socket& sock)
+{
+    // Start time 
+    auto start_time = chrono::high_resolution_clock::now();
+    
+    // For num shifting
+    mpz_class shifter(1L << (sizeof(OBLIVC_DATA_TYPE) * 8L));
+
+    // Assert elements number no more than 4
+    assert(left.size() == left.size());
+    assert(left.size() <= 4);
+
+    int bn = left.size();
+
+    mpz_class zero(0),  blind_left, blind_right;
+    JL_encryption(jl_pk, zero, blind_left);
+    JL_encryption(jl_pk, zero, blind_right);
+
+    vector<mpz_class> left_mask(bn), enc_left_mask(bn);
+    vector<mpz_class> right_mask(bn), enc_right_mask(bn);
+
+    for (int i = 0; i < bn; i ++)
+    {
+        gen_random_single(left_mask[i], sizeof(OBLIVC_DATA_TYPE) * 8  - 2);
+        JL_encryption(jl_pk, left_mask[i], enc_left_mask[i]);
+        blind_left = JL_homo_mul(jl_pk, blind_left, shifter);
+        blind_left = JL_homo_add(jl_pk, blind_left, JL_homo_add(jl_pk, left[i], enc_left_mask[i]));
+        
+        gen_random_single(right_mask[i], sizeof(OBLIVC_DATA_TYPE) * 8  - 2);
+        JL_encryption(jl_pk, right_mask[i], enc_right_mask[i]);
+        blind_right = JL_homo_mul(jl_pk, blind_right, shifter);
+        blind_right = JL_homo_add(jl_pk, blind_right, JL_homo_add(jl_pk, right[i], enc_right_mask[i]));
+    }
+
+    auto comm_start = chrono::high_resolution_clock::now();
+    boost::system::error_code ec;
+    boost::asio::write(sock, boost::asio::buffer(reinterpret_cast<char*>(&bn), sizeof(bn)), ec);
+    net_send_mpz_class(sock, blind_left);
+    net_send_mpz_class(sock, blind_right);
+    auto comm_end = chrono::high_resolution_clock::now();
+    g_cmp_comm_time += chrono::duration<double>(comm_end - comm_start).count();
+
+    vector<int> rtn(bn);
+
+    ProtocolDesc pd = {0};
+    protocolUseTcp2PKeepAlive(&pd, sock.native_handle(), true);
+    for (int i = bn - 1; i >= 0; i --) // For the ease of remote
+    {
+        OBLIVC_IO io = {0};
+        io.r_1 = left_mask[i].get_si();
+        io.r_2 = right_mask[i].get_si();
+        setCurrentParty(&pd, SEC_GDB_OBLIVC_SERVER);
+        execYaoProtocol(&pd, compare, &io);
+        rtn[i] = io.result;
+    }
+    cleanupProtocol(&pd);
+
+    // End time
+    auto end_time = chrono::high_resolution_clock::now();
+    g_compare_time_cost += chrono::duration<double>(end_time - start_time).count();
+
+    return rtn;
 }
 
 

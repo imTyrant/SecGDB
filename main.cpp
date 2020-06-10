@@ -297,6 +297,7 @@ void simple_server(cxxopts::ParseResult& args)
                 // secure_inverse_remote(pk.jl_pk, sk.jl_sk, clt);
                 ProtocolDesc pd = {0};
                 secure_compare_remote(pd, pk.jl_pk, sk.jl_sk, clt);
+                // secure_compare_batch_remote(pk.jl_pk, sk.jl_sk, clt);
             }
             catch(const std::exception& e)
             {
@@ -394,29 +395,45 @@ void client_work_test_compare(boost::asio::ip::tcp::socket& sock, cxxopts::Parse
     uniform_int_distribution<int> distribution(0, 1 << 16);
     auto dice = std::bind(distribution, generator);
     
+    // Specify batch size
+    int bn = args["batch"].as<int>();
 
     ProtocolDesc pd = {0};
     for (int i = 0; i < args["round"].as<int>(); i ++)
     {
         try
         {
-            int nl = dice();
-            int nr = dice();
-            mpz_class left(nl), right(nr);
-            mpz_class enc_left, enc_right;
-            JL_encryption(pk.jl_pk, left, enc_left);
-            JL_encryption(pk.jl_pk, right, enc_right);
-            auto start = chrono::high_resolution_clock::now();
-            int result = secure_compare(pd, pk.jl_pk, enc_left, enc_right, sock);
-            auto end = chrono::high_resolution_clock::now();
-            usleep(500);
-            auto cmp_time = chrono::duration<double>(end - start).count();
-            cout << "left: " << nl << " right: " << nr << " result: " << result  << " time: " << cmp_time << endl;
+            vector<int> left(bn), right(bn);
+            vector<mpz_class> enc_left(bn), enc_right(bn);
+            for (int b = 0; b < bn; b ++)
+            {
+                left[b] = dice();
+                right[b] = dice();
+                JL_encryption(pk, left[b], enc_left[b]);
+                JL_encryption(pk, right[b], enc_right[b]);
+            }
+
+            double cmp_time = 0.0;
+            vector<int> results(bn);
+            for (int b = 0; b < bn; b ++)
+            {
+                auto start = chrono::high_resolution_clock::now();
+                results[b] = secure_compare(pd, pk.jl_pk, enc_left[b], enc_right[b], sock);
+                auto end = chrono::high_resolution_clock::now();
+                usleep(500);
+                cmp_time += chrono::duration<double>(end - start).count();
+            }
+
+            for (int b = 0; b < bn; b ++)
+            {
+                cout << "l " << left[b] << " r " << right[b] << " result " << results[b] << "\n";
+            }
+            cout << "time " << cmp_time <<  endl;
 
             j["exps"].push_back({
-                {"left", nl},
-                {"right", nr},
-                {"result", result},
+                {"left", left},
+                {"right", right},
+                {"result", results},
                 {"time", cmp_time}
             });
         }
@@ -427,6 +444,88 @@ void client_work_test_compare(boost::asio::ip::tcp::socket& sock, cxxopts::Parse
         }
     }
 
+    double avg_time = 0.0;
+    for (auto item : j["exps"])
+    {
+        avg_time += item["time"].get<double>();
+    }
+
+    j["avg_time"] = avg_time / args["round"].as<int>();
+    j["avg_comm_time"] = g_cmp_comm_time / args["round"].as<int>();
+    j["avg_cmp_time"] = (avg_time - g_cmp_comm_time) / args["round"].as<int>();
+
+    os << j.dump() << endl;
+    os.close();
+}
+
+void client_work_test_compare_batch(boost::asio::ip::tcp::socket& sock, cxxopts::ParseResult& args)
+{
+    // Prepare key pair
+    PK pk;
+    SK sk;
+    load_pk(string("benchmark/exp1/pk.json"), pk);
+    load_sk(string("benchmark/exp1/sk.json"), sk);
+
+    // Prepare outdir
+    fs::path outdir(args["outdir"].as<string>());
+    outdir /= "batch_compare.json";
+    if (!fs::exists(outdir))
+    {
+        fs::create_directories(outdir.parent_path());
+    }
+
+    ofstream os(outdir.string(), ofstream::out);
+
+    // JSON stuff
+    nlohmann::json j;
+
+    // Init random source
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
+    uniform_int_distribution<int> distribution(0, 1 << 16);
+    auto dice = std::bind(distribution, generator);    
+
+    // Specify batch number
+    int bn = args["batch"].as<int>();
+
+    for (int i = 0; i < args["round"].as<int>(); i ++)
+    {
+        try
+        {   
+            vector<int> left(bn), right(bn);
+            vector<mpz_class> enc_left(bn), enc_right(bn);
+            for (int b = 0; b < bn; b ++)
+            {
+                left[b] = dice();
+                right[b] = dice();
+                JL_encryption(pk, left[b], enc_left[b]);
+                JL_encryption(pk, right[b], enc_right[b]);
+            }
+
+            auto start = chrono::high_resolution_clock::now();
+            vector<int> results = secure_compare_batch(pk.jl_pk, enc_left, enc_right, sock);
+            auto end = chrono::high_resolution_clock::now();
+            auto cmp_time = chrono::duration<double>(end - start).count();
+            usleep(500);
+            for (int b = 0; b < bn; b ++)
+            {
+                cout << "l " << left[b] << " r " << right[b] << " result " << results[b] << "\n";
+            }
+            cout << "time " << cmp_time <<  endl;
+
+            j["exps"].push_back({
+                {"left", left},
+                {"right", right},
+                {"result", results},
+                {"time", cmp_time}
+            });
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+            return;
+        }
+    }
     double avg_time = 0.0;
     for (auto item : j["exps"])
     {
@@ -454,6 +553,7 @@ void simple_client(cxxopts::ParseResult& args)
 
     // client_work_test_multiply(sock, args);
     client_work_test_compare(sock, args);
+    // client_work_test_compare_batch(sock, args);
     
     cout << "Quiting.." << endl;
 }
@@ -561,6 +661,7 @@ int main(int argc, char *argv[])
         ("scale", "Scale up graph weight", cxxopts::value<bool>()->default_value("false"))
         ("start", "Start point", cxxopts::value<string>())
         ("end", "End point", cxxopts::value<string>())
+        ("batch", "Batch size of secure compare", cxxopts::value<int>()->default_value("4"))
         ("h,help", "Print usage")
         ;
     try

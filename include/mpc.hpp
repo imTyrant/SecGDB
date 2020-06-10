@@ -8,6 +8,7 @@
 
 #include <gmpxx.h>
 #include <boost/asio.hpp>
+#include <vector>
 
 #include "crypto_stuff.hpp"
 
@@ -18,6 +19,9 @@ extern "C"
 
 void secure_compare_remote(ProtocolDesc& pd, JL_PK& pk, JL_SK& sk, boost::asio::ip::tcp::socket& sock);
 int secure_compare(ProtocolDesc& pd, JL_PK& pk, mpz_class& left, mpz_class& right, boost::asio::ip::tcp::socket& sock);
+
+void secure_compare_batch_remote(JL_PK& jl_pk, JL_SK& jl_sk, boost::asio::ip::tcp::socket& sock);
+std::vector<int> secure_compare_batch(JL_PK& jl_pk, std::vector<mpz_class>& left, std::vector<mpz_class>& right, boost::asio::ip::tcp::socket& sock);
 
 void secure_multiply_remote(JL_PK& jl_pk, JL_SK& jl_sk, boost::asio::ip::tcp::socket& sock);
 mpz_class secure_multiply(JL_PK& jl_pk, mpz_class& left, mpz_class& right, boost::asio::ip::tcp::socket& sock, int scaler=0);
