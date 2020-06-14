@@ -6,6 +6,8 @@ labhe/**
 obliv-c/
 data/
 
+.datasets/
+.dataset/
 benchmark_result/
 imgs/
 img/
@@ -19,3 +21,5 @@ core
 test.txt
 test.cc
 test.cpp
+
+__pycache__/
