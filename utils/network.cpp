@@ -94,10 +94,18 @@ bool net_recv_constrain(tcp::socket& sock, GGM& ggm, Constrain& con, int& ctr)
     {
         for (int i = 0; i < con_size - 1; i ++) // The last one is special case
         {
+            char* pdepth = nullptr;
+            net_recv_sized_data(sock, pdepth);
+            tmp->depth = (int)(*pdepth);
+            delete pdepth;
             int key_size = net_recv_sized_data(sock, tmp->key);
             tmp->next = new Constrain({0});
             tmp = tmp->next;
         }
+        char* pdepth = nullptr;
+        net_recv_sized_data(sock, pdepth);
+        tmp->depth = (int)(*pdepth);
+        delete pdepth;
         int key_size = net_recv_sized_data(sock, tmp->key);
         tmp->next = nullptr;
     }
@@ -135,6 +143,9 @@ bool net_send_constrain(tcp::socket& sock, GGM& ggm, Constrain& con, int ctr)
         tmp = &con;
         while(tmp)
         {
+            int tmp_depth = tmp->depth;
+            char* pdepth = (char*)&tmp_depth;
+            net_send_sized_data(sock, sizeof(int), pdepth);
             net_send_sized_data(sock, ggm.key_size, tmp->key);
             tmp = tmp->next;
         }
