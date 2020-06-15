@@ -227,6 +227,11 @@ void Client::enc_graph(const string &file_path, int scaler)
         ggm_derive(&ggm, &constrain, &sub_keys);
 
         int i = 0;
+        // if (v.first == "2")
+        // {
+        //     cout << sub_keys.num << endl;
+        //     print_constrain(&constrain, &ggm);
+        // }
         for (auto e : this->graph.adjacency_list[v.second])
         {
             //Firstly, encrypt the weight of the each edge of the vertex v.
@@ -250,6 +255,13 @@ void Client::enc_graph(const string &file_path, int scaler)
 
             unsigned char UT_i[KEY_SIZE] = {0};
             unsigned char mask[KEY_SIZE] = {0};
+
+            // if (v.first == "2")
+            // {
+            //     for (int idx = 0 ; idx < KEY_SIZE; idx ++)
+            //         printf("%2hhx ", sub_keys.keys[i][idx]);
+            //     printf("\n");
+            // }
 
             //Get UT_i
             H_1(F_1_u, KEY_SIZE, (unsigned char*)sub_keys.keys[i], KEY_SIZE, UT_i);

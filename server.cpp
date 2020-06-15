@@ -1,5 +1,6 @@
 #include <iostream>
 #include <gmpxx.h>
+#include <chrono>
 
 #include <unordered_map>
 #include <string>
@@ -149,6 +150,12 @@ vector<tuple<string, string, mpz_class>> Server::unlock_adjacency_vertexes(strin
     {
         string P_vi, F_1_vi;
         mpz_class ei;
+        // if (F_1_u[0] == '2')
+        // {
+        //     for (int idx = 0; idx < KEY_SIZE; idx ++)
+        //         printf("%2hhx ", sub_keys.keys[i][idx]);
+        //     printf("\n");
+        // }
         recover_masked_edge_info(F_1_u_char, (u_char*)sub_keys.keys[i], P_vi, F_1_vi, ei);
         rtn.push_back(std::make_tuple(P_vi, F_1_vi, ei));
     }
@@ -494,6 +501,14 @@ void Server::unlock_graph(tuple<Graph<mpz_class>, Graph<mpz_class>>& double_grap
         Subkeys sub_keys;
         int ctr = contact_and_get_ggm_sub_key(ggm, sub_keys, P_u);
         if (ctr < 1) {continue;}
+        // cout << ctr << endl;
+        // cout << sub_keys.num << endl;
+        // for (int si = 0; si < sub_keys.num; si ++)
+        // {
+        //     for (int idx = 0; idx < KEY_SIZE; idx ++)
+        //         printf("%2hhx ", sub_keys.keys[si][idx]);
+        //     printf("\n");
+        // }
         auto neighbors = unlock_adjacency_vertexes(this->D_key[P_u], sub_keys, ctr);
         for (auto each : neighbors)
         {
@@ -523,8 +538,15 @@ unordered_map<Vertex, mpz_class> Server::page_rank(std::string &F_1_s, std::stri
     JL_encryption(this->pk.jl_pk, one_sub_d, enc_1sd);
 
     auto double_graph = std::make_tuple(Graph<mpz_class>(), Graph<mpz_class>());
+auto ulk_start_time = chrono::high_resolution_clock::now();
     unlock_graph(double_graph, F_1_s, P_s, constrained_key, ctr);
+auto ulk_end_time = chrono::high_resolution_clock::now();
+cout << "Unlock time: " << chrono::duration<double>(ulk_end_time - ulk_start_time).count() << endl;
+auto nml_start_time = chrono::high_resolution_clock::now();
     normalize_graph_outedge_weight(double_graph);
+auto nml_end_time = chrono::high_resolution_clock::now();
+cout << "Nomalize time: " << chrono::duration<double>(nml_end_time - nml_start_time).count() << endl;
+
     Graph<mpz_class>& graph = std::get<0>(double_graph); // graph for out edges
     Graph<mpz_class>& reverse_graph = std::get<1>(double_graph); // graph for in edges
 
@@ -538,6 +560,7 @@ unordered_map<Vertex, mpz_class> Server::page_rank(std::string &F_1_s, std::stri
 
     for (int e = 0; e < epochs; e ++)
     {
+    auto start_time = chrono::high_resolution_clock::now();
         for (auto it = PR_list.begin(); it != PR_list.end(); it ++)
         {
             auto& pr_value = it->second;
@@ -553,6 +576,8 @@ unordered_map<Vertex, mpz_class> Server::page_rank(std::string &F_1_s, std::stri
             pr_value = multiply(pr_value, enc_d, SCALE_SHIFT_P);
             pr_value = JL_homo_add(this->pk, pr_value, enc_1sd);
         }
+    auto end_time = chrono::high_resolution_clock::now();
+    cout << "Iter: " << e << " time: " << chrono::duration<double>(end_time - start_time).count() << endl;
     }
     return PR_list;
 }

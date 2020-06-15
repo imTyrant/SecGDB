@@ -140,7 +140,12 @@ void query_flow(cxxopts::ParseResult& args)
     init_dbg_client(outdir.string().c_str());
     init_global_key(outdir.string().c_str());
 
-    client.enc_graph(args["infile"].as<string>());
+    // client.enc_graph(args["infile"].as<string>());
+    client.set_graph(args["infile"].as<string>());
+    client.load_dcv((outdir.remove_trailing_separator() / "dcv.bin").string());
+    client.load_de((outdir.remove_trailing_separator() / "de.bin").string());
+    client.load_dpv((outdir.remove_trailing_separator() / "dpv.bin").string());
+
     asio::io_service service;
     tcp::endpoint ep(asio::ip::address::from_string(args["address"].as<string>()), args["port"].as<short>());
     tcp::socket sock(service);
@@ -173,7 +178,11 @@ void query_dist(cxxopts::ParseResult& args)
     init_dbg_client(outdir.string().c_str());
     init_global_key(outdir.string().c_str());
 
-    client.enc_graph(args["infile"].as<string>());
+    // client.enc_graph(args["infile"].as<string>());
+    client.set_graph(args["infile"].as<string>());
+    client.load_dcv((outdir.remove_trailing_separator() / "dcv.bin").string());
+    client.load_de((outdir.remove_trailing_separator() / "de.bin").string());
+    client.load_dpv((outdir.remove_trailing_separator() / "dpv.bin").string());
     // for (auto it = client.get_graph().adjacency_list.begin(); it != client.get_graph().adjacency_list.end(); it++)
     // {
     //     cout << it->first.name << " ";
@@ -207,6 +216,30 @@ void page_rank(cxxopts::ParseResult& args)
 {
     fs::path outdir(args["outdir"].as<string>());
 
+    // Prepare output json file
+    nlohmann::json j;
+    string ouput_json((outdir.remove_trailing_separator() / "result.json").string());
+    if (fs::exists(fs::path(ouput_json)))
+    {
+        try
+        {
+            ifstream is(ouput_json, ios::in);
+            is >> j;
+            is.close();
+        }
+        catch(const nlohmann::detail::parse_error& e)
+        {
+            j["file"] = args["infile"].as<string>();
+        }
+    }
+    else
+    {
+        j["file"] = args["infile"].as<string>();
+    }
+    
+    // Prepare output stream
+    ofstream os(ouput_json, ios::out);
+
     // Prepare for global parameters
     init_dbg_client(outdir.string().c_str());
     init_global_key(outdir.string().c_str());
@@ -221,7 +254,12 @@ void page_rank(cxxopts::ParseResult& args)
     {
         scaler = SCALE_SHIFT_P;
     }
+
     client.enc_graph(args["infile"].as<string>(), scaler);
+    // client.set_graph(args["infile"].as<string>());
+    // client.load_dcv((outdir.remove_trailing_separator() / "dcv.bin").string());
+    // client.load_de((outdir.remove_trailing_separator() / "de.bin").string());
+    // client.load_dpv((outdir.remove_trailing_separator() / "dpv.bin").string());
 
     // Server
     asio::io_service service;
@@ -236,20 +274,46 @@ void page_rank(cxxopts::ParseResult& args)
     auto query_start = chrono::high_resolution_clock::now();
     auto pr_result = server.page_rank(reqs.F_1_s, reqs.P_s, reqs.constrained_key, reqs.ctr, args["epoch"].as<int>());
     auto query_end = chrono::high_resolution_clock::now();
+    
+    auto time_cost = chrono::duration<double>(query_end - query_start).count();
+    auto pure_time_cost = time_cost - g_protocol_ctr * 0.0005;
 
-    cout << chrono::duration<double>(query_end - query_start).count() << endl;
+    cout << "Overall time cost: " << time_cost << endl;
+    cout << "Pure time cost: " << pure_time_cost << endl;
 
-    size_t base = 1 << scaler;
-    for (auto it = client.get_graph().vertices.begin(); it != client.get_graph().vertices.end(); it ++)
+    // size_t base = 1 << scaler;
+    // for (auto it = client.get_graph().vertices.begin(); it != client.get_graph().vertices.end(); it ++)
+    // {
+    //     mpz_class weight;
+
+    //     Vertex vr = {client.get_Dv2p().at(it->second.name), it->second.in_degree, it->second.out_degree};
+    //     JL_decryption(client.get_sk(), client.get_pk(), pr_result.at(vr), weight);
+
+    //     cout << "V: " << it->first << " Dec " << weight.get_str() 
+    //          << " pr: " << float(weight.get_ui()) / float(1 << SCALE_SHIFT_P) << endl;
+    // }
+
+    j["exps"].push_back({
+        {"otime", time_cost},
+        {"ptime", pure_time_cost}
+    });
+
+    double avg_otime = 0.0;
+    double avg_ptime = 0.0;
+    int exps_ctr = 0;
+    for (auto item : j["exps"])
     {
-        mpz_class weight;
-
-        Vertex vr = {client.get_Dv2p().at(it->second.name), it->second.in_degree, it->second.out_degree};
-        JL_decryption(client.get_sk(), client.get_pk(), pr_result.at(vr), weight);
-
-        cout << "V: " << it->first << " Dec " << weight.get_str() 
-             << " pr: " << float(weight.get_ui()) / float(1 << SCALE_SHIFT_P) << endl;
+        avg_otime += item["otime"].get<double>();
+        avg_ptime += item["ptime"].get<double>();
+        exps_ctr ++;
     }
+
+    j["avg_otime"] = avg_otime / exps_ctr;
+    j["avg_ptime"] = avg_ptime / exps_ctr;
+    
+    os << j.dump() << endl;
+    os.close();
+
 }
 
 void start_proxy(cxxopts::ParseResult& args)

@@ -74,6 +74,7 @@ class Client
     }
 
     inline Graph<size_t>& get_graph() { return this->graph; }
+    inline void set_graph(const std::string& path) { build_graph(this->graph, path); }
 
     inline SK& get_sk() { return this->sk; }
 
