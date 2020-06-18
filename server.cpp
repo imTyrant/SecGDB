@@ -454,10 +454,10 @@ void Server::normalize_graph_outedge_weight(tuple<Graph<mpz_class>, Graph<mpz_cl
             weight_sum = JL_homo_add(pk, weight_sum, eit->weight);
         }
 
+        mpz_class sum_ivs = inverse(weight_sum);
         for (auto eit = graph.adjacency_list[vertex_info].begin(); eit != graph.adjacency_list[vertex_info].end(); eit ++)
         {
             // Divide edge weight by weight sum
-            mpz_class sum_ivs = inverse(weight_sum);
             mpz_class new_weight = multiply(eit->weight, sum_ivs, SCALE_SHIFT_P);
             // Update each edge
             graph.modify_edge(eit->src.name, eit->dest.name, new_weight);
