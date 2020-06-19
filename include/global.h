@@ -27,7 +27,7 @@ extern "C"
 
 #define SCALE_SHIFT_P 16
 
-#define INVERSE_ITERS 40
+#define INVERSE_ITERS 20
 
 #define SEC_GDB_PAGE_RANK_D 0.85
 

@@ -108,6 +108,28 @@ void enc_graph(cxxopts::ParseResult& args)
 {
     fs::path outdir(args["outdir"].as<string>());
 
+     // Prepare output json file
+    nlohmann::json j;
+    string ouput_json((outdir.remove_trailing_separator() / "enc.json").string());
+    if (fs::exists(fs::path(ouput_json)))
+    {
+        try
+        {
+            ifstream is(ouput_json, ios::in);
+            is >> j;
+            is.close();
+        }
+        catch(const nlohmann::detail::parse_error& e)
+        {
+            j["file"] = args["infile"].as<string>();
+        }
+    }
+    else
+    {
+        j["file"] = args["infile"].as<string>();
+    }
+    ofstream os(ouput_json, ios::out);
+
     Client client;
 
     int scaler=0;
@@ -120,14 +142,29 @@ void enc_graph(cxxopts::ParseResult& args)
     client.enc_graph(args["infile"].as<string>(), scaler);
     auto enc_end = chrono::high_resolution_clock::now();
 
-    cout << chrono::duration<double>(enc_end-enc_start).count() << endl;
+    double enc_time = chrono::duration<double>(enc_end-enc_start).count();
+    cout << enc_time << endl;
 
-    save_pk((outdir.remove_trailing_separator() / "pk.json"), client.get_pk());
-    save_sk((outdir.remove_trailing_separator() / "sk.json"), client.get_sk());
+    j["exps"].push_back({{"enc", enc_time}});
+    double avg_enc_time = 0;
+    int ctr = 0;
+    for (auto each : j["exps"])
+    {
+        avg_enc_time += each["enc"].get<double>();
+        ctr++;
+    }
 
-    save_Dv((outdir.remove_trailing_separator() / "dcv.bin"), client.get_Dcv());
-    save_Dv((outdir.remove_trailing_separator() / "dpv.bin"), client.get_Dpv());
-    save_De((outdir.remove_trailing_separator() / "de.bin"), client.get_De());
+    j["avg_enc"] = avg_enc_time / ctr;
+
+    os << j.dump() << endl;
+
+
+    // save_pk((outdir.remove_trailing_separator() / "pk.json"), client.get_pk());
+    // save_sk((outdir.remove_trailing_separator() / "sk.json"), client.get_sk());
+
+    // save_Dv((outdir.remove_trailing_separator() / "dcv.bin"), client.get_Dcv());
+    // save_Dv((outdir.remove_trailing_separator() / "dpv.bin"), client.get_Dpv());
+    // save_De((outdir.remove_trailing_separator() / "de.bin"), client.get_De());
 }
 
 void query_flow(cxxopts::ParseResult& args)
@@ -389,39 +426,66 @@ mpz_class la_inv(mpz_class input)
     return rtn;
 }
 
-void client_work_test_multiply(boost::asio::ip::tcp::socket& sock, cxxopts::ParseResult& args)
+void client_work_test_inverse(boost::asio::ip::tcp::socket& sock, cxxopts::ParseResult& args)
 {
+    using hrc = chrono::high_resolution_clock;
+
     PK pk;
     SK sk;
-
     load_pk(string("benchmark/exp1/pk.json"), pk);
     load_sk(string("benchmark/exp1/sk.json"), sk);
 
-    init_global_key("exp1");
+    // init_global_key("exp1");
 
-    while (true)
+    // Prepare outdir
+    fs::path outdir(args["outdir"].as<string>());
+    outdir /= "inverse.json";
+    if (!fs::exists(outdir))
+    {
+        fs::create_directories(outdir.parent_path());
+    }
+
+    ofstream os(outdir.string(), ofstream::out);
+
+    // JSON stuff
+    nlohmann::json j;
+
+    // Init random source
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
+    uniform_int_distribution<size_t> distribution(0, 1L << 16);
+    auto dice = std::bind(distribution, generator);
+
+    int base = 1 << SCALE_SHIFT_P;
+    bool flag = false;
+    for (int i = 0; i < args["round"].as<int>(); i ++)
     {
         try
         {
-            boost::system::error_code ec;
-            float input;
-            cin >> input;
-            size_t base = (1 << SCALE_SHIFT_P);
-            size_t tmp = (size_t)(input * base);
+            float num  = float(dice());
+
+            if (flag) {num = 1 / num; }
+            flag = !flag;
+            
+            size_t input = size_t(num * float(base));
 
             mpz_class input_enc;
-            JL_encryption(pk, tmp, input_enc);
+            JL_encryption(pk, input, input_enc);
 
+            auto ivs_start = hrc::now();
             mpz_class out_enc = secure_inverse(pk.jl_pk, input_enc, sock, SCALE_SHIFT_P);
-
-            mpz_class la_res = la_inv(std::move(mpz_class(tmp)));
+            auto ivs_end = hrc::now();
+            double ivs_time = chrono::duration<double>(ivs_end - ivs_start).count();
 
             mpz_class output;
             JL_decryption(sk, pk, out_enc, output);
 
-            cout << output.get_str() << " " << la_res.get_str()  << endl;
-            cout << float(output.get_ui()) / float(base) << " " << (1 / input) << endl;
-
+            printf("Num: %f ", num);
+            cout << float(output.get_ui()) / float(base) << " " << 1/num << " time: " << ivs_time << endl;
+            
+            j["exps"].push_back({
+                {"ivs", ivs_time}
+            });
         }
         catch(const std::exception& e)
         {
@@ -429,8 +493,92 @@ void client_work_test_multiply(boost::asio::ip::tcp::socket& sock, cxxopts::Pars
             break;
         }
     }
-    
+
+    double avg_ivs_time = 0.0;
+    for (auto item : j["exps"])
+    {
+        avg_ivs_time += item["ivs"].get<double>();
+    }
+
+    j["avg_ivs_time"] = avg_ivs_time / args["round"].as<int>();
+    j["avg_ivs_time_no_comm"] = (avg_ivs_time - g_mul_comm_time) / args["round"].as<int>();
+
+    os << j.dump() << endl;
 }
+
+void client_work_test_multiply(boost::asio::ip::tcp::socket& sock, cxxopts::ParseResult& args)
+{
+    using hrc = chrono::high_resolution_clock;
+
+    PK pk;
+    SK sk;
+    load_pk(string("benchmark/exp1/pk.json"), pk);
+    load_sk(string("benchmark/exp1/sk.json"), sk);
+
+    // init_global_key("exp1");
+
+    // Prepare outdir
+    fs::path outdir(args["outdir"].as<string>());
+    outdir /= "mul.json";
+    if (!fs::exists(outdir))
+    {
+        fs::create_directories(outdir.parent_path());
+    }
+
+    ofstream os(outdir.string(), ofstream::out);
+
+    // JSON stuff
+    nlohmann::json j;
+
+    // Init random source
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
+    uniform_int_distribution<size_t> distribution(0, 1L << 16);
+    auto dice = std::bind(distribution, generator);
+
+    for (int i = 0; i < args["round"].as<int>(); i ++)
+    {
+        try
+        {
+            size_t left = dice(), right = dice();
+            mpz_class enc_left, enc_right;
+            JL_encryption(pk, left, enc_left);         
+            JL_encryption(pk, right, enc_right);
+
+            auto mul_start = hrc::now();
+            mpz_class result = secure_multiply(pk.jl_pk, enc_left, enc_right, sock);
+            auto mul_end = hrc::now();
+            double mul_time = chrono::duration<double>(mul_end - mul_start).count();
+
+            mpz_class dec_out;
+            JL_decryption(sk, pk, result, dec_out);
+
+            cout << "mul: " << left * right << " " << dec_out.get_str() << " time: " << mul_time << endl;
+
+            j["exps"].push_back({
+                {"mul", mul_time}
+            });
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+            break;
+        }
+    } 
+
+    double avg_mul_time = 0.0;
+    for (auto item : j["exps"])
+    {
+        avg_mul_time += item["mul"].get<double>();
+    }
+
+    j["avg_mul_time"] = avg_mul_time / args["round"].as<int>();
+    j["avg_mul_time_no_comm"] = (avg_mul_time - g_mul_comm_time) / args["round"].as<int>();
+
+    os << j.dump() << endl;
+
+}
+
 
 void client_work_test_compare(boost::asio::ip::tcp::socket& sock, cxxopts::ParseResult& args)
 {
@@ -615,6 +763,7 @@ void simple_client(cxxopts::ParseResult& args)
     sock.connect(ep);
     sock.set_option(boost::asio::ip::tcp::no_delay(true));
 
+    // client_work_test_inverse(sock, args);
     // client_work_test_multiply(sock, args);
     client_work_test_compare(sock, args);
     // client_work_test_compare_batch(sock, args);
@@ -686,6 +835,102 @@ void eval_ggm(cxxopts::ParseResult& args)
     os.close();
 }
 
+void eval_jl_crypto(cxxopts::ParseResult& args)
+{
+    using hrc = chrono::high_resolution_clock;
+
+    // Prepare key pair
+    PK pk;
+    SK sk;
+    load_pk(string("benchmark/exp1/pk.json"), pk);
+    load_sk(string("benchmark/exp1/sk.json"), sk);
+
+    // Prepare outdir
+    fs::path outdir(args["outdir"].as<string>());
+    outdir /= "jl_crypto.json";
+    if (!fs::exists(outdir))
+    {
+        fs::create_directories(outdir.parent_path());
+    }
+
+    ofstream os(outdir.string(), ofstream::out);
+    // JSON stuff
+    nlohmann::json j;
+
+    // Init random source
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
+    uniform_int_distribution<size_t> distribution(0, 1L << 32);
+    auto dice = std::bind(distribution, generator);
+
+    mpz_class shifter(1L << 32);
+    for (int i = 0; i < args["round"].as<int>(); i ++)
+    {
+        int a1 = dice(), a2 = dice();
+        mpz_class a1_enc, a2_enc;
+
+        auto enc_start = hrc::now();
+        JL_encryption(pk, a1, a1_enc);
+        auto enc_end = hrc::now();
+        JL_encryption(pk, a2, a2_enc);
+        double enc_time = chrono::duration<double>(enc_end - enc_start).count();
+
+        auto add_start = hrc::now();
+        mpz_class rst_add = JL_homo_add(pk, a1_enc, a2_enc);
+        auto add_end = hrc::now();
+        double add_time = chrono::duration<double>(add_end - add_start).count();
+
+        auto sub_start = hrc::now();
+        mpz_class rst_sub = JL_homo_sub(pk, a1_enc, a2_enc);
+        auto sub_end = hrc::now();
+        double sub_time = chrono::duration<double>(sub_end - sub_start).count();
+
+        auto mul_start = hrc::now();
+        mpz_class rst_mul = JL_homo_mul(pk, a1_enc, shifter);
+        auto mul_end = hrc::now();
+        double mul_time = chrono::duration<double>(mul_end - mul_start).count();
+
+
+        mpz_class a1_dec, a2_dec;
+        auto dec_start = hrc::now();
+        JL_decryption(sk, pk, a1_enc, a1_dec);
+        auto dec_end = hrc::now();
+        JL_decryption(sk, pk, a2_enc, a2_dec);
+        double dec_time = chrono::duration<double>(dec_end - dec_start).count();
+
+        j["exps"].push_back({
+            {"enc", enc_time},
+            {"add", add_time},
+            {"sub", sub_time},
+            {"mul", mul_time},
+            {"dec", dec_time}
+        });
+    }
+
+    double avg_enc_time = 0;
+    double avg_dec_time = 0;
+    double avg_add_time = 0;
+    double avg_sub_time = 0;
+    double avg_mul_time = 0;
+
+    for (auto each : j["exps"])
+    {
+        avg_enc_time += each["enc"].get<double>();
+        avg_dec_time += each["dec"].get<double>();
+        avg_add_time += each["add"].get<double>();
+        avg_sub_time += each["sub"].get<double>();
+        avg_mul_time += each["mul"].get<double>();
+    }
+
+    j["avg_enc_time"] = avg_enc_time / args["round"].as<int>();    
+    j["avg_dec_time"] = avg_dec_time / args["round"].as<int>();
+    j["avg_add_time"] = avg_add_time / args["round"].as<int>();
+    j["avg_sub_time"] = avg_sub_time / args["round"].as<int>();
+    j["avg_mul_time"] = avg_mul_time / args["round"].as<int>();
+
+    os << j.dump() << endl;
+}
+
 /* Experiments regester. */
 map<string, void (*) (cxxopts::ParseResult&)> Experiments({
     {"simple_client", simple_client},
@@ -696,7 +941,8 @@ map<string, void (*) (cxxopts::ParseResult&)> Experiments({
     {"query_dist", query_dist},
     {"query_flow", query_flow},
     {"page_rank", page_rank},
-    {"eval_ggm", eval_ggm}
+    {"eval_ggm", eval_ggm},
+    {"eval_jl_crypto", eval_jl_crypto}
 });
 
 void print_exps()

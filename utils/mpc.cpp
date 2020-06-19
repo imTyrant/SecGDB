@@ -318,11 +318,13 @@ mpz_class secure_multiply(JL_PK& jl_pk, mpz_class& left, mpz_class& right, tcp::
     mpz_class blinded_left = JL_homo_add(jl_pk, left, r_left_enc);
     mpz_class blinded_right = JL_homo_add(jl_pk, right, r_right_enc);
 
+    mpz_class mul_tmp_result;
+    auto comm1_start = std::chrono::high_resolution_clock::now();
     net_send_mpz_class(sock, blinded_left);
     net_send_mpz_class(sock, blinded_right);
-
-    mpz_class mul_tmp_result;
     net_recv_mpz_class(sock, mul_tmp_result);
+    auto comm1_end = std::chrono::high_resolution_clock::now();
+
 
     mul_tmp_result = JL_homo_sub(jl_pk, mul_tmp_result, JL_homo_mul(jl_pk, left, r_right));
     mul_tmp_result = JL_homo_sub(jl_pk, mul_tmp_result, JL_homo_mul(jl_pk, right, r_left));
@@ -339,15 +341,20 @@ mpz_class secure_multiply(JL_PK& jl_pk, mpz_class& left, mpz_class& right, tcp::
     JL_encryption(jl_pk, r3_div, r3_div_enc);
 
     mul_tmp_result = JL_homo_add(jl_pk, mul_tmp_result, r3_enc);
+
+    auto comm2_start = std::chrono::high_resolution_clock::now();
     net_send_mpz_class(sock, base);
     net_send_mpz_class(sock, mul_tmp_result);
-
     net_recv_mpz_class(sock, rtn);
+    auto comm2_end = std::chrono::high_resolution_clock::now();
+
     rtn = JL_homo_sub(jl_pk, rtn, r3_div_enc);
 
 #endif
     auto end = std::chrono::high_resolution_clock::now();
     g_mul_time_cost += std::chrono::duration<double>(end - start).count();
+    g_mul_comm_time += std::chrono::duration<double>(comm1_end - comm1_start).count();
+    g_mul_comm_time += std::chrono::duration<double>(comm2_end - comm2_start).count();
     return rtn;
 }
 
